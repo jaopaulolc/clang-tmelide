@@ -237,6 +237,11 @@ void StmtProfiler::VisitAttributedStmt(const AttributedStmt *S) {
   // TODO: maybe visit attributes?
 }
 
+/// GNU TM Extension
+void StmtProfiler::VisitTransactionAtomicStmt(const TransactionAtomicStmt *S) {
+  VisitStmt(S);
+}
+
 void StmtProfiler::VisitIfStmt(const IfStmt *S) {
   VisitStmt(S);
   VisitDecl(S->getConditionVariable());

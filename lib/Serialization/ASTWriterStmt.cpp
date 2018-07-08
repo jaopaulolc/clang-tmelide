@@ -126,6 +126,8 @@ void ASTStmtWriter::VisitAttributedStmt(AttributedStmt *S) {
   Code = serialization::STMT_ATTRIBUTED;
 }
 
+void ASTStmtWriter::VisitTransactionAtomicStmt(TransactionAtomicStmt *S) {}
+
 void ASTStmtWriter::VisitIfStmt(IfStmt *S) {
   VisitStmt(S);
   Record.push_back(S->isConstexpr());

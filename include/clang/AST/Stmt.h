@@ -929,6 +929,57 @@ public:
   }
 };
 
+/// TransactionAtomicStmt - This represents an __transaction_atomic
+///
+class TransactionAtomicStmt: public Stmt {
+  enum { INIT, COND, SLOWPATH, FASTPATH, TERM, END_EXPR};
+  Stmt* SubExprs[END_EXPR];
+
+  SourceLocation SlowPathLoc;
+  SourceLocation FastPathLoc;
+
+public:
+  TransactionAtomicStmt(const ASTContext &C, Stmt* init, SourceLocation SPL,
+         Expr *cond, Stmt *slowpath, SourceLocation FPL, Stmt *fastpath, Stmt* term);
+  /// \brief Build an empty if/then/else statement
+  explicit TransactionAtomicStmt(EmptyShell Empty) : Stmt(TransactionAtomicStmtClass, Empty) { }
+
+  const Stmt *getInit() const { return SubExprs[INIT]; }
+  void setInit(Stmt *S) { SubExprs[INIT] = S; }
+  const Expr *getCond() const { return reinterpret_cast<Expr*>(SubExprs[COND]);}
+  void setCond(Expr *E) { SubExprs[COND] = reinterpret_cast<Stmt *>(E); }
+  const Stmt *getSlowPath() const { return SubExprs[SLOWPATH]; }
+  void setSlowPath(Stmt *S) { SubExprs[SLOWPATH] = S; }
+  const Stmt *getFastPath() const { return SubExprs[FASTPATH]; }
+  void setFastPath(Stmt *S) { SubExprs[FASTPATH] = S; }
+  const Stmt *getTerm() const { return SubExprs[TERM]; }
+  void setTerm(Stmt *S) { SubExprs[TERM] = S; }
+
+  Stmt *getInit() { return SubExprs[INIT]; }
+  Expr *getCond() { return reinterpret_cast<Expr*>(SubExprs[COND]); }
+  Stmt *getSlowPath() { return SubExprs[SLOWPATH]; }
+  Stmt *getFastPath() { return SubExprs[FASTPATH]; }
+  Stmt *getTerm() { return SubExprs[TERM]; }
+
+  SourceLocation getSlowPathLoc() const { return SlowPathLoc; }
+  void setSlowPathLoc(SourceLocation L) { SlowPathLoc = L; }
+  SourceLocation getFastPathLoc() const { return FastPathLoc; }
+  void setFastPathLoc(SourceLocation L) { FastPathLoc = L; }
+
+  SourceLocation getLocStart() const LLVM_READONLY { return SlowPathLoc; }
+  SourceLocation getLocEnd() const LLVM_READONLY { return FastPathLoc; }
+
+  // Iterators over subexpressions.  The iterators will include iterating
+  // over the initialization expression referenced by the condition variable.
+  child_range children() {
+    return child_range(&SubExprs[0], &SubExprs[0]+TERM);
+  }
+
+  static bool classof(const Stmt *T) {
+    return T->getStmtClass() == TransactionAtomicStmtClass;
+  }
+};
+
 /// IfStmt - This represents an if/then/else.
 class IfStmt : public Stmt {
   enum { INIT, VAR, COND, THEN, ELSE, END_EXPR };

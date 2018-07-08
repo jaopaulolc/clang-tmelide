@@ -1994,6 +1994,9 @@ static void ParseLangArgs(LangOptions &Opts, ArgList &Args, InputKind IK,
       LangStd = OpenCLLangStd;
   }
 
+  /// GNU TM Extension
+	if ( Args.hasArg(OPT_fgnu_tm) ) Opts.gnu_tm = true;
+
   Opts.IncludeDefaultHeader = Args.hasArg(OPT_finclude_default_header);
 
   llvm::Triple T(TargetOpts.Triple);

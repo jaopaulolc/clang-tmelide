@@ -542,6 +542,25 @@ void JumpScopeChecker::BuildScopeInformation(Stmt *S,
     LabelAndGotoScopes[S] = ParentScope;
     break;
 
+  case Stmt::TransactionAtomicStmtClass: {
+    TransactionAtomicStmt* TxStmt = static_cast<TransactionAtomicStmt*>(S);
+    Stmt* SlowPath = TxStmt->getSlowPath();
+    Stmt* FastPath = TxStmt->getFastPath();
+    unsigned NewParentScope = Scopes.size();
+    Scopes.push_back(GotoScope(ParentScope,
+          diag::err_external_goto_target_inside_transaction,
+          /* exiting transaction diagnostics disabled */0,
+          SlowPath->getLocStart()));
+    BuildScopeInformation(SlowPath, NewParentScope);
+    NewParentScope = Scopes.size();
+    Scopes.push_back(GotoScope(ParentScope,
+          diag::err_external_goto_target_inside_transaction,
+          /* exiting transaction diagnostics disabled */0,
+          FastPath->getLocStart()));
+    BuildScopeInformation(FastPath, NewParentScope);
+    return;
+  }
+
   default:
     break;
   }

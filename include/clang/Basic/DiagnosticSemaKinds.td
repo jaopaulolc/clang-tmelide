@@ -5054,6 +5054,8 @@ def warn_unused_label : Warning<"unused label %0">,
 
 def err_goto_into_protected_scope : Error<
   "cannot jump from this goto statement to its label">;
+def err_external_goto_target_inside_transaction : Error<
+  "cannot jump into __transactional_atomic block from outter scope">;
 def ext_goto_into_protected_scope : ExtWarn<
   "jump from this goto statement to its label is a Microsoft extension">,
   InGroup<MicrosoftGoto>;

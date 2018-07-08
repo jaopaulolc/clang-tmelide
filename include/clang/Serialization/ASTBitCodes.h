@@ -1863,6 +1863,10 @@ namespace serialization {
       EXPR_COAWAIT,
       EXPR_COYIELD,
       EXPR_DEPENDENT_COAWAIT,
+      
+      /// GNU TM Extension
+      /// \brief An TransactionAtomicStmt record.
+      STMT_TRANSACTION_ATOMIC,
     };
 
     /// \brief The kinds of designators that can occur in a

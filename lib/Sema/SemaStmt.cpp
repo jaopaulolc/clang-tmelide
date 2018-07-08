@@ -523,6 +523,219 @@ public:
 };
 }
 
+static ExprResult
+BuildCallExpr(ASTContext& Context, Sema& Sema, SourceLocation srcLocation,
+    StringRef functionName, QualType& functionType) {
+
+  IdentifierTable& idt = Sema.getPreprocessor().getIdentifierTable();
+
+  IdentifierInfo* idInfo = &idt.get(functionName);
+
+  DeclarationName* declName =
+    new (Context) DeclarationName(idInfo);
+
+  DeclarationNameInfo* declNameInfo = new (Context)
+    DeclarationNameInfo(*declName, srcLocation);
+
+  DeclContext* declCTX = Sema.getCurFunctionDecl()->getDeclContext();
+  LinkageSpecDecl* lsd = LinkageSpecDecl::Create(Context, declCTX,
+      srcLocation, srcLocation, LinkageSpecDecl::lang_c,
+      /*hasBrace*/false);
+
+  FunctionDecl* beginTxDecl = FunctionDecl::Create(Context, lsd,
+      srcLocation, *declNameInfo, functionType,
+      /*TypeSourceInfo*/nullptr, StorageClass::SC_Extern,
+      /*isInlineSpecified*/false, /*hasWrittenPrototype*/false);
+
+  DeclRefExpr* declRefExpr = DeclRefExpr::Create(Context,
+      NestedNameSpecifierLoc(), /*TemplateKWLoc*/ srcLocation,
+      beginTxDecl,
+      /*refersToEnclosingVarOrCapture*/false, *declNameInfo,
+      functionType, ExprValueKind::VK_RValue);
+
+  return Sema.ActOnCallExpr(Sema.getCurScope(), declRefExpr, srcLocation,
+      None, srcLocation);
+}
+
+StmtResult
+Sema::ActOnTransactionAtomicInitStmt(SourceLocation transactionAtomicLoc) {
+  return BuildTransactionAtomicInitStmt(transactionAtomicLoc);
+}
+
+StmtResult
+Sema::BuildTransactionAtomicInitStmt(SourceLocation transactionAtomicLoc) {
+
+  // Using '__transaction_atomic' loc for all generated nodes
+  SourceLocation txAtomicLoc = transactionAtomicLoc;
+
+  // Gets reference to IdentifierTable which links names to decl objects
+  IdentifierTable& idt = this->getPreprocessor().getIdentifierTable();
+  // Registers __exec_mode as the name of the InitStmt of TransactionAtomicStmt
+  IdentifierInfo* initVarIdInfo = &idt.get("__exec_mode");
+  // Declares __exec_mode as a auto 'int' variable within function context
+  // XXX Not sure yet which is the correct StorageClass for __exec_mode
+  VarDecl* initVarDecl = VarDecl::Create(Context, this->getFunctionLevelDeclContext(),
+      txAtomicLoc, txAtomicLoc, initVarIdInfo, Context.IntTy,
+      nullptr, StorageClass::SC_Auto);
+
+  // Initialize __exec_mode with return of _ITM_beginTransaction
+  FunctionProtoType::ExtProtoInfo  beginTxProtoInfo;
+  beginTxProtoInfo.Variadic = false;
+  QualType beginTxQualType =
+    Context.getFunctionType(Context.IntTy, None, beginTxProtoInfo);
+  ExprResult R = BuildCallExpr(Context, *this, txAtomicLoc,
+      "_ITM_beginTransaction", beginTxQualType);
+  if (R.isInvalid()) {
+    llvm::errs() << "fatal error: failed to build _ITM_beginTransaction\n";
+    return StmtError();
+  }
+
+  CallExpr* beginTxCallExpr = static_cast<CallExpr*>(R.get());
+  initVarDecl->setInit(beginTxCallExpr);
+
+  DeclGroupRef initVarDeclGroupRef(initVarDecl);
+  return new(Context) DeclStmt(initVarDeclGroupRef,
+      transactionAtomicLoc, transactionAtomicLoc);
+}
+
+StmtResult
+Sema::ActOnTransactionAtomicTermStmt(SourceLocation transactionAtomicLoc) {
+  return BuildTransactionAtomicTermStmt(transactionAtomicLoc);
+}
+
+StmtResult
+Sema::BuildTransactionAtomicTermStmt(SourceLocation transactionAtomicLoc) {
+
+  // Using '__transaction_atomic' loc for all generated nodes
+  SourceLocation txAtomicLoc = transactionAtomicLoc;
+
+  FunctionProtoType::ExtProtoInfo  commitTxProtoInfo;
+  commitTxProtoInfo.Variadic = false;
+  QualType commitTxQualType =
+    Context.getFunctionType(Context.VoidTy, None, commitTxProtoInfo);
+  ExprResult R = BuildCallExpr(Context, *this, txAtomicLoc,
+      "_ITM_commitTransaction", commitTxQualType);
+  if (R.isInvalid()) {
+    llvm::errs() << "fatal error: failed to build _ITM_commitTransaction\n";
+    return StmtError();
+  }
+
+  CallExpr* commitTxCallExpr = static_cast<CallExpr*>(R.get());
+
+  SmallVector<Stmt*, 4> commitStmts;
+  commitStmts.push_back(commitTxCallExpr);
+
+  return CompoundStmt::Create(Context, commitStmts,
+      txAtomicLoc, txAtomicLoc);
+}
+
+Expr*
+Sema::ActOnTransactionAtomicCondStmt(SourceLocation transactionAtomicLoc,
+    Stmt* initStmt) {
+  return BuildTransactionAtomicCondStmt(transactionAtomicLoc,
+      initStmt);
+}
+
+Expr*
+Sema::BuildTransactionAtomicCondStmt(SourceLocation transactionAtomicLoc,
+    Stmt* initStmt) {
+
+  DeclStmt* initVarDeclStmt = static_cast<DeclStmt*>(initStmt);
+  VarDecl* initVarDecl = static_cast<VarDecl*>(initVarDeclStmt->getSingleDecl());
+
+  Expr *lhs, *rhs;
+  lhs = new (Context) DeclRefExpr(initVarDecl, false, initVarDecl->getType(),
+      ExprValueKind::VK_LValue, transactionAtomicLoc);
+
+  // FIXME: use a meaningfull value to decide on which path to take
+  llvm::APInt initAPInt((unsigned)Context.getTypeSize(Context.IntTy), 42UL);
+  rhs = IntegerLiteral::Create(Context, initAPInt, Context.IntTy,
+      transactionAtomicLoc);
+  //lhs->dump();
+  //rhs->dump();
+  BinaryOperator* execModeEQComparison = new (Context) BinaryOperator(lhs, rhs,
+      BinaryOperatorKind::BO_EQ, Context.BoolTy, ExprValueKind::VK_LValue,
+      ExprObjectKind::OK_Ordinary, transactionAtomicLoc, FPOptions());
+  //execModeEQComparison->dump();
+  //ImplicitCastExpr* initVarAssignCastToBool =
+  //  new (Context) ImplicitCastExpr(ImplicitCastExpr::OnStack, Context.BoolTy,
+  //      CastKind::CK_IntegralToBoolean, initVarAssign, ExprValueKind::VK_LValue);
+  //initVarAssignCastToBool->dump();
+  //if (Context.getLangOpts().CPlusPlus)
+  //  return initVarAssignCastToBool;
+  //else
+    return execModeEQComparison;
+}
+
+StmtResult
+Sema::ActOnTransactionAtomicStmt(SourceLocation transactionAtomicLoc,
+    Stmt* initStmt, Expr* condExpr, Stmt* compoundStmt, Stmt* termStmt) {
+  return BuildTransactionAtomicStmt(transactionAtomicLoc, initStmt, condExpr,
+      compoundStmt, termStmt);
+}
+
+StmtResult
+Sema::BuildTransactionAtomicStmt(SourceLocation transactionAtomicLoc,
+    Stmt* initStmt, Expr* condExpr, Stmt* compoundStmt, Stmt* termStmt) {
+
+  // Using '__transaction_atomic' loc for all generated nodes
+  SourceLocation txAtomicLoc = transactionAtomicLoc;
+
+  FunctionProtoType::ExtProtoInfo  funcProtoInfo;
+  funcProtoInfo.Variadic = false;
+
+  QualType funcType =
+    Context.getFunctionType(Context.VoidTy, None, funcProtoInfo);
+
+  ExprResult beginSlowResult = BuildCallExpr(Context, *this, txAtomicLoc,
+      "__begin_tm_slow_path", funcType);
+  ExprResult endSlowResult = BuildCallExpr(Context, *this, txAtomicLoc,
+      "__end_tm_slow_path", funcType);
+  if (beginSlowResult.isInvalid() || endSlowResult.isInvalid()) {
+    llvm::errs() << "fatal error: failed to build __{begin, end}_tm_slow_path\n";
+    return StmtError();
+  }
+
+  ExprResult beginFastResult = BuildCallExpr(Context, *this, txAtomicLoc,
+      "__begin_tm_fast_path", funcType);
+  ExprResult endFastResult = BuildCallExpr(Context, *this, txAtomicLoc,
+      "__end_tm_fast_path", funcType);
+  if (beginFastResult.isInvalid() || endFastResult.isInvalid()) {
+    llvm::errs() << "fatal error: failed to build __{begin, end}_tm_fast_path\n";
+    return StmtError();
+  }
+
+  CallExpr* beginSlowPathCallExpr = static_cast<CallExpr*>(beginSlowResult.get());
+  CallExpr* endSlowPathCallExpr = static_cast<CallExpr*>(endSlowResult.get());
+  CallExpr* beginFastPathCallExpr = static_cast<CallExpr*>(beginFastResult.get());
+  CallExpr* endFastPathCallExpr = static_cast<CallExpr*>(endFastResult.get());
+
+  CompoundStmt* originalCS = static_cast<CompoundStmt*>(compoundStmt);
+
+  SmallVector<Stmt*, 1024> slowPathStmts, fastPathStmts;
+
+  // Duplicate CompoundStmt for both paths
+  slowPathStmts.push_back(beginSlowPathCallExpr);
+  fastPathStmts.push_back(beginFastPathCallExpr);
+  for (Stmt* S : originalCS->body()) {
+    slowPathStmts.push_back(S);
+    fastPathStmts.push_back(S);
+  }
+  slowPathStmts.push_back(endSlowPathCallExpr);
+  fastPathStmts.push_back(endFastPathCallExpr);
+
+  CompoundStmt* slowPath = CompoundStmt::Create(Context, slowPathStmts,
+      txAtomicLoc, txAtomicLoc);
+  CompoundStmt* fastPath = CompoundStmt::Create(Context, fastPathStmts,
+      txAtomicLoc, txAtomicLoc);
+
+  getCurFunction()->setHasBranchProtectedScope();
+
+  return new (Context) TransactionAtomicStmt(Context, initStmt,
+      transactionAtomicLoc, condExpr, slowPath,
+      transactionAtomicLoc, fastPath, termStmt);
+}
+
 StmtResult
 Sema::ActOnIfStmt(SourceLocation IfLoc, bool IsConstexpr, Stmt *InitStmt,
                   ConditionResult Cond,

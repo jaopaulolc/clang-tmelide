@@ -165,6 +165,12 @@ def err_at_defs_cxx : Error<"@defs is not supported in Objective-C++">;
 def err_at_in_class : Error<"unexpected '@' in member specification">;
 def err_unexpected_semi : Error<"unexpected ';' before %0">;
 
+// GNU TM Extenstion
+def err_expected_lbrace_after : Error<"expected '{' after '%0'">;
+def warn_gnu_tm_disabled : Warning<
+  "'__transaction_atomic' without transactional memory support enabled">, 
+  InGroup<GccCompat>;
+
 def err_expected_fn_body : Error<
   "expected function body after function declarator">;
 def warn_attribute_on_function_definition : Warning<

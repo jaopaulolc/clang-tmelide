@@ -599,6 +599,71 @@ void CodeGenFunction::EmitIndirectGotoStmt(const IndirectGotoStmt &S) {
   EmitBranch(IndGotoBB);
 }
 
+namespace {
+  struct TransactionAtomicStmtCleanup final : EHScopeStack::Cleanup {
+    const Stmt* termStmt;
+
+    TransactionAtomicStmtCleanup(const Stmt* S) : termStmt(S) {}
+
+    void Emit(CodeGenFunction& CGF, Flags flags) override {
+      CGF.EmitStmt(termStmt);
+    }
+  };
+} // end of anonymous namespcace
+
+void
+CodeGenFunction::EmitTransactionAtomicStmt(const TransactionAtomicStmt &S) {
+
+  if (S.getInit()) {
+    EmitStmt(S.getInit());
+  }
+
+  // push a cleanup to emit _ITM_commitTransaction on every exit of
+  // TransactionAtomicStmt
+  EHStack.pushCleanup<TransactionAtomicStmtCleanup>(NormalCleanup,
+      S.getTerm());
+
+  // Just emit the conditional branch.
+  llvm::BasicBlock *ThenBlock = createBasicBlock("if.then");
+  llvm::BasicBlock *ContBlock = createBasicBlock("if.end");
+  llvm::BasicBlock *ElseBlock = createBasicBlock("if.else");
+
+  EmitBranchOnBoolExpr(S.getCond(), ThenBlock, ElseBlock,
+                       getProfileCount(S.getSlowPath()));
+
+  // Emit the 'then' code.
+  EmitBlock(ThenBlock);
+  incrementProfileCounter(&S);
+  {
+    RunCleanupsScope ThenScope(*this);
+    EmitStmt(S.getSlowPath());
+  }
+  EmitBranch(ContBlock);
+
+  // Emit the 'else' code if present.
+  //if (const Stmt *Else = S.getSlowPath()) {
+    {
+      // There is no need to emit line number for an unconditional branch.
+      auto NL = ApplyDebugLocation::CreateEmpty(*this);
+      EmitBlock(ElseBlock);
+    }
+    {
+      RunCleanupsScope ElseScope(*this);
+      EmitStmt(S.getFastPath());
+    }
+    {
+      // There is no need to emit line number for an unconditional branch.
+      auto NL = ApplyDebugLocation::CreateEmpty(*this);
+      EmitBranch(ContBlock);
+    }
+  //}
+  S.getSlowPath()->dumpPretty(this->getContext());
+  S.getFastPath()->dumpPretty(this->getContext());
+
+  // Emit the continuation block for code after the if.
+  EmitBlock(ContBlock, true);
+}
+
 void CodeGenFunction::EmitIfStmt(const IfStmt &S) {
   // C99 6.8.4.1: The first substatement is executed if the expression compares
   // unequal to 0.  The condition must be a scalar type.

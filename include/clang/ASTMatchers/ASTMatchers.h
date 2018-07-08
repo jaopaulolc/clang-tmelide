@@ -1620,6 +1620,14 @@ extern const internal::VariadicDynCastAllOfMatcher<Stmt, DeclRefExpr>
 /// \endcode
 extern const internal::VariadicDynCastAllOfMatcher<Stmt, IfStmt> ifStmt;
 
+/// \brief Matches __transaction_atomic statements.
+///
+/// Example matches '__transaction_atomic {}'
+/// \code
+///   __transaction_atomic { <stmt list> }
+/// \endcode
+extern const internal::VariadicDynCastAllOfMatcher<Stmt, TransactionAtomicStmt> transactionAtomicStmt;
+
 /// \brief Matches for statements.
 ///
 /// Example matches 'for (;;) {}'

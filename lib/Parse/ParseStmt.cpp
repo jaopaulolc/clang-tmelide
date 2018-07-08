@@ -236,6 +236,10 @@ Retry:
     return Actions.ActOnNullStmt(ConsumeToken(), HasLeadingEmptyMacro);
   }
 
+
+  case tok::kw___transaction_atomic:
+    return ParseTransactionAtomicStmt();
+
   case tok::kw_if:                  // C99 6.8.4.1: if-statement
     return ParseIfStatement(TrailingElseLoc);
   case tok::kw_switch:              // C99 6.8.4.2: switch-statement
@@ -1114,6 +1118,48 @@ bool Parser::ParseParenExprOrCondition(StmtResult *InitStmt,
   return false;
 }
 
+/// ParseTransactionAtomicStmt
+///				transaction-atomic: [GNU TM Extension]
+///				'__transaction_atomic' '{' statement '}'
+
+StmtResult Parser::ParseTransactionAtomicStmt() {
+	assert(Tok.is(tok::kw___transaction_atomic) && "Not a __transaction_atomic stmt!");
+	SourceLocation transactionAtomicLoc = ConsumeToken(); // eat the '__transaction_atomic'
+
+	if ( ! getLangOpts().gnu_tm ) {
+		Diag(transactionAtomicLoc, diag::warn_gnu_tm_disabled);
+    return ParseCompoundStatement();
+  }
+
+
+	if (Tok.isNot(tok::l_brace)) {
+		Diag(Tok, diag::err_expected_lbrace_after) << "__transaction_atomic";
+		return StmtError();
+	}
+
+  bool C99orCXX = getLangOpts().C99 || getLangOpts().CPlusPlus;
+  ParseScope transactionScope(this, Scope::DeclScope | Scope::ControlScope, C99orCXX);
+
+  StmtResult initStmt =
+    Actions.ActOnTransactionAtomicInitStmt(transactionAtomicLoc);
+
+  Expr* condExpr =
+    Actions.ActOnTransactionAtomicCondStmt(transactionAtomicLoc,
+        initStmt.get());
+
+  StmtResult termStmt =
+    Actions.ActOnTransactionAtomicTermStmt(transactionAtomicLoc);
+
+  StmtResult compoundStmt = ParseCompoundStatement();
+
+  transactionScope.Exit();
+
+  StmtResult transactionAtomicStmt =
+    Actions.ActOnTransactionAtomicStmt(transactionAtomicLoc,
+        initStmt.get(), condExpr, compoundStmt.get(), termStmt.get());
+
+	return transactionAtomicStmt;
+}
 
 /// ParseIfStatement
 ///       if-statement: [C99 6.8.4.1]

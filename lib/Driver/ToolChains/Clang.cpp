@@ -3065,6 +3065,11 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
   // FIXME: Implement custom jobs for internal actions.
   CmdArgs.push_back("-cc1");
 
+  /// GNU TM Extension
+	if ( Args.hasArg(options::OPT_fgnu_tm) ) {
+		CmdArgs.push_back("-fgnu-tm");
+	}
+
   // Add the "effective" target triple.
   CmdArgs.push_back("-triple");
   CmdArgs.push_back(Args.MakeArgString(TripleStr));

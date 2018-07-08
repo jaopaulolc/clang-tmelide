@@ -1766,6 +1766,7 @@ private:
                                  Sema::ConditionResult &CondResult,
                                  SourceLocation Loc,
                                  Sema::ConditionKind CK);
+  StmtResult ParseTransactionAtomicStmt();
   StmtResult ParseIfStatement(SourceLocation *TrailingElseLoc);
   StmtResult ParseSwitchStatement(SourceLocation *TrailingElseLoc);
   StmtResult ParseWhileStatement(SourceLocation *TrailingElseLoc);

@@ -3717,6 +3717,23 @@ public:
                                  Stmt *SubStmt);
 
   class ConditionResult;
+
+  StmtResult ActOnTransactionAtomicStmt(SourceLocation transactionAtomicLoc,
+      Stmt* initStmt, Expr* condExpr, Stmt* compoundStmt, Stmt* termStmt);
+  StmtResult BuildTransactionAtomicStmt(SourceLocation transactionAtomicLoc,
+      Stmt* initStmt, Expr* condExpr, Stmt* compoundStmt, Stmt* termStmt);
+
+  StmtResult ActOnTransactionAtomicInitStmt(SourceLocation transactionAtomicLoc);
+  StmtResult BuildTransactionAtomicInitStmt(SourceLocation transactionAtomicLoc);
+
+  StmtResult ActOnTransactionAtomicTermStmt(SourceLocation transactionAtomicLoc);
+  StmtResult BuildTransactionAtomicTermStmt(SourceLocation transactionAtomicLoc);
+
+  Expr* ActOnTransactionAtomicCondStmt(SourceLocation transactionAtomicLoc,
+      Stmt* initVarDeclStmt);
+  Expr* BuildTransactionAtomicCondStmt(SourceLocation transactionAtomicLoc,
+      Stmt* initVarDeclStmt);
+
   StmtResult ActOnIfStmt(SourceLocation IfLoc, bool IsConstexpr,
                          Stmt *InitStmt,
                          ConditionResult Cond, Stmt *ThenVal,

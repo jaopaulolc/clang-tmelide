@@ -788,6 +788,19 @@ void MSAsmStmt::initialize(const ASTContext &C, StringRef asmstr,
                  });
 }
 
+
+TransactionAtomicStmt::TransactionAtomicStmt(const ASTContext &C,
+    Stmt* init, SourceLocation SPL, Expr *cond, Stmt
+    *slowpath, SourceLocation FPL, Stmt *fastpath, Stmt* term)
+    : Stmt(TransactionAtomicStmtClass), SlowPathLoc(SPL), FastPathLoc(FPL) {
+  SubExprs[INIT] = init;
+  SubExprs[COND] = cond;
+  SubExprs[SLOWPATH] = slowpath;
+  SubExprs[FASTPATH] = fastpath;
+  SubExprs[TERM] = term;
+
+}
+
 IfStmt::IfStmt(const ASTContext &C, SourceLocation IL, bool IsConstexpr,
                Stmt *init, VarDecl *var, Expr *cond, Stmt *then,
                SourceLocation EL, Stmt *elsev)

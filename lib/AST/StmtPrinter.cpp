@@ -71,6 +71,7 @@ namespace  {
     void PrintRawDecl(Decl *D);
     void PrintRawDeclStmt(const DeclStmt *S);
     void PrintRawIfStmt(IfStmt *If);
+    void PrintRawTransactionAtomicStmt(TransactionAtomicStmt *TA);
     void PrintRawCXXCatchStmt(CXXCatchStmt *Catch);
     void PrintCallArgs(CallExpr *E);
     void PrintRawSEHExceptHandler(SEHExceptStmt *S);
@@ -179,6 +180,13 @@ void StmtPrinter::VisitAttributedStmt(AttributedStmt *Node) {
   }
 
   PrintStmt(Node->getSubStmt(), 0);
+}
+
+/// GNU TM Extension
+void StmtPrinter::PrintRawTransactionAtomicStmt(TransactionAtomicStmt *TA) {}
+void StmtPrinter::VisitTransactionAtomicStmt(TransactionAtomicStmt *TA) {
+  Indent();
+  PrintRawTransactionAtomicStmt(TA);
 }
 
 void StmtPrinter::PrintRawIfStmt(IfStmt *If) {

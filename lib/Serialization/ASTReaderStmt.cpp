@@ -166,6 +166,8 @@ void ASTStmtReader::VisitAttributedStmt(AttributedStmt *S) {
   S->AttrLoc = ReadSourceLocation();
 }
 
+void ASTStmtReader::VisitTransactionAtomicStmt(TransactionAtomicStmt *S) {}
+
 void ASTStmtReader::VisitIfStmt(IfStmt *S) {
   VisitStmt(S);
   S->setConstexpr(Record.readInt());

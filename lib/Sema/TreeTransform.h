@@ -6592,6 +6592,12 @@ StmtResult TreeTransform<Derived>::TransformAttributedStmt(AttributedStmt *S) {
 
 template<typename Derived>
 StmtResult
+TreeTransform<Derived>::TransformTransactionAtomicStmt(TransactionAtomicStmt *S) {
+  return StmtError();
+}
+
+template<typename Derived>
+StmtResult
 TreeTransform<Derived>::TransformIfStmt(IfStmt *S) {
   // Transform the initialization statement
   StmtResult Init = getDerived().TransformStmt(S->getInit());
