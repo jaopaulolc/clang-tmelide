@@ -6379,6 +6379,11 @@ static void ProcessDeclAttribute(Sema &S, Scope *scope, Decl *D,
   case AttributeList::AT_Convergent:
     handleSimpleAttribute<ConvergentAttr>(S, D, Attr);
     break;
+  case AttributeList::AT_TransactionPure:
+    handleSimpleAttribute<TransactionPureAttr>(S, D, Attr);
+  case AttributeList::AT_TransactionSafe:
+    handleSimpleAttribute<TransactionSafeAttr>(S, D, Attr);
+    break;
   case AttributeList::AT_NoInline:
     handleSimpleAttribute<NoInlineAttr>(S, D, Attr);
     break;
