@@ -2570,7 +2570,12 @@ enum CXCursorKind {
   /**
    * \brief A code completion overload candidate.
    */
-  CXCursor_OverloadCandidate             = 700
+  CXCursor_OverloadCandidate             = 700,
+
+  /**
+   * \brief A transaction atomic statement
+   */
+  CXCursor_TransactionAtomicStmt         = 701
 };
 
 /**

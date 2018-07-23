@@ -3105,6 +3105,10 @@ Stmt *ASTReader::ReadStmtFromStream(ModuleFile &F) {
         /*NumAttrs*/Record[ASTStmtReader::NumStmtFields]);
       break;
 
+    case STMT_TRANSACTION_ATOMIC:
+      S = new (Context) TransactionAtomicStmt(Empty);
+      break;
+
     case STMT_IF:
       S = new (Context) IfStmt(Empty);
       break;
