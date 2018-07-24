@@ -140,6 +140,8 @@ void CodeGenFunction::EmitStmt(const Stmt *S, ArrayRef<const Attr *> Attrs) {
   case Stmt::IndirectGotoStmtClass:
     EmitIndirectGotoStmt(cast<IndirectGotoStmt>(*S)); break;
 
+  case Stmt::TransactionAtomicStmtClass:
+              EmitTransactionAtomicStmt(cast<TransactionAtomicStmt>(*S)); break;
   case Stmt::IfStmtClass:      EmitIfStmt(cast<IfStmt>(*S));              break;
   case Stmt::WhileStmtClass:   EmitWhileStmt(cast<WhileStmt>(*S), Attrs); break;
   case Stmt::DoStmtClass:      EmitDoStmt(cast<DoStmt>(*S), Attrs);       break;
