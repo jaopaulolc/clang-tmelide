@@ -712,13 +712,12 @@ Sema::BuildTransactionAtomicStmt(SourceLocation transactionAtomicLoc,
 
   CompoundStmt* originalCS = static_cast<CompoundStmt*>(compoundStmt);
 
-  SmallVector<Stmt*, 1024> slowPathStmts, fastPathStmts;
+  SmallVector<Stmt*, 2> slowPathStmts;
+  SmallVector<Stmt*, 32> fastPathStmts;
 
-  // Duplicate CompoundStmt for both paths
   slowPathStmts.push_back(beginSlowPathCallExpr);
   fastPathStmts.push_back(beginFastPathCallExpr);
   for (Stmt* S : originalCS->body()) {
-    slowPathStmts.push_back(S);
     fastPathStmts.push_back(S);
   }
   slowPathStmts.push_back(endSlowPathCallExpr);
