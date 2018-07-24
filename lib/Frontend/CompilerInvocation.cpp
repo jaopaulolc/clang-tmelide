@@ -2843,6 +2843,11 @@ bool CompilerInvocation::CreateFromArgs(CompilerInvocation &Res,
     Res.getCodeGenOpts().FineGrainedBitfieldAccesses = false;
     Diags.Report(diag::warn_drv_fine_grained_bitfield_accesses_ignored);
   }
+
+  // GNU TM Extension
+  if (Res.getLangOpts()->gnu_tm) {
+    Res.getCodeGenOpts().Transactify = true;
+  }
   return Success;
 }
 
