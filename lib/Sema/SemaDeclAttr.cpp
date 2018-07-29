@@ -6381,6 +6381,7 @@ static void ProcessDeclAttribute(Sema &S, Scope *scope, Decl *D,
     break;
   case AttributeList::AT_TransactionPure:
     handleSimpleAttribute<TransactionPureAttr>(S, D, Attr);
+    break;
   case AttributeList::AT_TransactionSafe:
     handleSimpleAttribute<TransactionSafeAttr>(S, D, Attr);
     break;
