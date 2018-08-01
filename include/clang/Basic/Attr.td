@@ -541,14 +541,14 @@ def Alias : Attr {
 
 def TransactionPure : InheritableAttr {
   let Spellings = [GCC<"transaction_pure">];
-  let Subjects = SubjectList<[Function]>;
+  let Subjects = SubjectList<[FunctionLike]>;
   let Accessors = [Accessor<"isTransactionPure", [GCC<"transaction_pure">]>];
   let Documentation = [Undocumented];
 }
 
 def TransactionSafe : InheritableAttr {
   let Spellings = [GCC<"transaction_safe">];
-  let Subjects = SubjectList<[Function]>;
+  let Subjects = SubjectList<[FunctionLike]>;
   let Accessors = [Accessor<"isTransactionSafe", [GCC<"transaction_safe">]>];
   let Documentation = [Undocumented];
 }
