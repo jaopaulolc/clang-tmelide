@@ -2044,6 +2044,10 @@ public:
                               SourceLocation AsmLoc,
                               SourceLocation RParenLoc);
 
+  /// \brief Diagnose whether any non-transactoinal-safe or pure functions
+  /// are called inside __transaction_atomic blocks or safe/pure functions
+  void DiagnoseUnsafeCalls(Stmt *Body, unsigned DiagID);
+
   /// \brief Handle a C++11 empty-declaration and attribute-declaration.
   Decl *ActOnEmptyDeclaration(Scope *S,
                               AttributeList *AttrList,

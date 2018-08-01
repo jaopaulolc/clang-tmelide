@@ -5056,6 +5056,12 @@ def err_goto_into_protected_scope : Error<
   "cannot jump from this goto statement to its label">;
 def err_external_goto_target_inside_transaction : Error<
   "cannot jump into __transactional_atomic block from outter scope">;
+def err_unsafe_call_inside_transaction_atomic_block : Error<
+  "unsafe call inside __transaction_atomic block">;
+def err_unsafe_call_inside_transaction_pure : Error<
+  "unsafe call inside transaction_pure function">;
+def err_unsafe_call_inside_transaction_safe : Error<
+  "unsafe call inside transaction_safe function">;
 def ext_goto_into_protected_scope : ExtWarn<
   "jump from this goto statement to its label is a Microsoft extension">,
   InGroup<MicrosoftGoto>;

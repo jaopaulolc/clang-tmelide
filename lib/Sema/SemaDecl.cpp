@@ -12416,6 +12416,16 @@ Decl *Sema::ActOnFinishFunctionBody(Decl *dcl, Stmt *Body,
         !PP.isCodeCompletionEnabled())
       DiagnoseInvalidJumps(Body);
 
+    if (getLangOpts().gnu_tm) {
+      if (FD->hasAttr<TransactionSafeAttr>() ||
+          FD->hasAttr<TransactionPureAttr>()) {
+        unsigned DiagID = FD->hasAttr<TransactionPureAttr>() ?
+          diag::err_unsafe_call_inside_transaction_pure :
+          diag::err_unsafe_call_inside_transaction_safe;
+        DiagnoseUnsafeCalls(Body, DiagID);
+      }
+    }
+
     if (CXXDestructorDecl *Destructor = dyn_cast<CXXDestructorDecl>(dcl)) {
       if (!Destructor->getParent()->isDependentType())
         CheckDestructor(Destructor);

@@ -15,6 +15,7 @@ add_clang_library(clangSema
   DelayedDiagnostic.cpp
   IdentifierResolver.cpp
   JumpDiagnostics.cpp
+  UnsafeCallDiagnostics.cpp
   MultiplexExternalSemaSource.cpp
   Scope.cpp
   ScopeInfo.cpp
@@ -58,6 +59,7 @@ add_clang_library(clangSema
 
   LINK_LIBS
   clangAST
+  clangASTMatchers
   clangAnalysis
   clangBasic
   clangEdit

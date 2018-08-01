@@ -678,6 +678,9 @@ StmtResult
 Sema::BuildTransactionAtomicStmt(SourceLocation transactionAtomicLoc,
     Stmt* initStmt, Expr* condExpr, Stmt* compoundStmt, Stmt* termStmt) {
 
+  DiagnoseUnsafeCalls(compoundStmt,
+      diag::err_unsafe_call_inside_transaction_atomic_block);
+
   // Using '__transaction_atomic' loc for all generated nodes
   SourceLocation txAtomicLoc = transactionAtomicLoc;
 
