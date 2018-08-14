@@ -783,16 +783,13 @@ Sema::BuildTransactionAtomicCondStmt(SourceLocation transactionAtomicLoc,
   lhs = new (Context) DeclRefExpr(initVarDecl, false, initVarDecl->getType(),
       ExprValueKind::VK_LValue, transactionAtomicLoc);
 
-  // FIXME: use a meaningfull value to decide on which path to take
-  llvm::APInt initAPInt((unsigned)Context.getTypeSize(Context.IntTy), 42UL);
+  llvm::APInt initAPInt((unsigned)Context.getTypeSize(Context.IntTy), 0x1);
   rhs = IntegerLiteral::Create(Context, initAPInt, Context.IntTy,
       transactionAtomicLoc);
-  //lhs->dump();
-  //rhs->dump();
-  BinaryOperator* execModeEQComparison = new (Context) BinaryOperator(lhs, rhs,
-      BinaryOperatorKind::BO_EQ, Context.BoolTy, ExprValueKind::VK_LValue,
+  BinaryOperator* execModeAndOp = new (Context) BinaryOperator(lhs, rhs,
+      BinaryOperatorKind::BO_And, Context.BoolTy, ExprValueKind::VK_LValue,
       ExprObjectKind::OK_Ordinary, transactionAtomicLoc, FPOptions());
-  //execModeEQComparison->dump();
+  //execModeAndOp->dump();
   //ImplicitCastExpr* initVarAssignCastToBool =
   //  new (Context) ImplicitCastExpr(ImplicitCastExpr::OnStack, Context.BoolTy,
   //      CastKind::CK_IntegralToBoolean, initVarAssign, ExprValueKind::VK_LValue);
@@ -800,7 +797,7 @@ Sema::BuildTransactionAtomicCondStmt(SourceLocation transactionAtomicLoc,
   //if (Context.getLangOpts().CPlusPlus)
   //  return initVarAssignCastToBool;
   //else
-    return execModeEQComparison;
+    return execModeAndOp;
 }
 
 StmtResult
