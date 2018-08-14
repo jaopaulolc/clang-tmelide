@@ -525,7 +525,8 @@ public:
 
 static ExprResult
 BuildCallExpr(ASTContext& Context, Sema& Sema, SourceLocation srcLocation,
-    StringRef functionName, QualType& functionType) {
+    StringRef functionName, QualType& functionType,
+    MutableArrayRef<Expr*> Args) {
 
   IdentifierTable& idt = Sema.getPreprocessor().getIdentifierTable();
 
@@ -545,7 +546,22 @@ BuildCallExpr(ASTContext& Context, Sema& Sema, SourceLocation srcLocation,
   FunctionDecl* beginTxDecl = FunctionDecl::Create(Context, lsd,
       srcLocation, *declNameInfo, functionType,
       /*TypeSourceInfo*/nullptr, StorageClass::SC_Extern,
-      /*isInlineSpecified*/false, /*hasWrittenPrototype*/false);
+      /*isInlineSpecified*/false, /*hasWrittenPrototype*/true);
+
+  SmallVector<ParmVarDecl*, 1> Params;
+  unsigned cnt = 0;
+  for (Expr* E : Args) {
+    IdentifierInfo* idInfo =
+      &idt.get(("__" + functionName + "_arg_" + Twine(cnt)).str());
+    ParmVarDecl *PVD = ParmVarDecl::Create(Context,  declCTX, srcLocation,
+        srcLocation, idInfo, E->getType(), nullptr, StorageClass::SC_None,
+        nullptr);
+    Params.push_back(PVD);
+    PVD->dumpColor();
+    cnt++;
+  }
+  if (cnt > 0)
+    beginTxDecl->setParams(Params);
 
   DeclRefExpr* declRefExpr = DeclRefExpr::Create(Context,
       NestedNameSpecifierLoc(), /*TemplateKWLoc*/ srcLocation,
@@ -553,8 +569,8 @@ BuildCallExpr(ASTContext& Context, Sema& Sema, SourceLocation srcLocation,
       /*refersToEnclosingVarOrCapture*/false, *declNameInfo,
       functionType, ExprValueKind::VK_RValue);
 
-  return Sema.ActOnCallExpr(Sema.getCurScope(), declRefExpr, srcLocation,
-      None, srcLocation);
+  return Sema.ActOnCallExpr(Sema.getCurScope(), declRefExpr, SourceLocation(),
+      Args, SourceLocation());
 }
 
 StmtResult
@@ -568,6 +584,9 @@ Sema::BuildTransactionAtomicInitStmt(SourceLocation transactionAtomicLoc) {
   // Using '__transaction_atomic' loc for all generated nodes
   SourceLocation txAtomicLoc = transactionAtomicLoc;
 
+
+  QualType UInt32_t = Context.getIntTypeForBitwidth(32, /*isSigned*/0);
+
   // Gets reference to IdentifierTable which links names to decl objects
   IdentifierTable& idt = this->getPreprocessor().getIdentifierTable();
   // Registers __exec_mode as the name of the InitStmt of TransactionAtomicStmt
@@ -578,13 +597,13 @@ Sema::BuildTransactionAtomicInitStmt(SourceLocation transactionAtomicLoc) {
       txAtomicLoc, txAtomicLoc, initVarIdInfo, Context.IntTy,
       nullptr, StorageClass::SC_Auto);
 
-  // Initialize __exec_mode with return of _ITM_beginTransaction
-  FunctionProtoType::ExtProtoInfo  beginTxProtoInfo;
-  beginTxProtoInfo.Variadic = false;
+  FunctionProtoType::ExtProtoInfo nonVariadicProtoInfo;
+  nonVariadicProtoInfo.Variadic = false;
+
   QualType beginTxQualType =
-    Context.getFunctionType(Context.IntTy, None, beginTxProtoInfo);
+    Context.getFunctionType(UInt32_t, ArgTypes, nonVariadicProtoInfo);
   ExprResult R = BuildCallExpr(Context, *this, txAtomicLoc,
-      "_ITM_beginTransaction", beginTxQualType);
+      "_ITM_beginTransaction", beginTxQualType, None);
   if (R.isInvalid()) {
     llvm::errs() << "fatal error: failed to build _ITM_beginTransaction\n";
     return StmtError();
@@ -614,7 +633,7 @@ Sema::BuildTransactionAtomicTermStmt(SourceLocation transactionAtomicLoc) {
   QualType commitTxQualType =
     Context.getFunctionType(Context.VoidTy, None, commitTxProtoInfo);
   ExprResult R = BuildCallExpr(Context, *this, txAtomicLoc,
-      "_ITM_commitTransaction", commitTxQualType);
+      "_ITM_commitTransaction", commitTxQualType, None);
   if (R.isInvalid()) {
     llvm::errs() << "fatal error: failed to build _ITM_commitTransaction\n";
     return StmtError();
@@ -691,18 +710,18 @@ Sema::BuildTransactionAtomicStmt(SourceLocation transactionAtomicLoc,
     Context.getFunctionType(Context.VoidTy, None, funcProtoInfo);
 
   ExprResult beginSlowResult = BuildCallExpr(Context, *this, txAtomicLoc,
-      "__begin_tm_slow_path", funcType);
+      "__begin_tm_slow_path", funcType, None);
   ExprResult endSlowResult = BuildCallExpr(Context, *this, txAtomicLoc,
-      "__end_tm_slow_path", funcType);
+      "__end_tm_slow_path", funcType, None);
   if (beginSlowResult.isInvalid() || endSlowResult.isInvalid()) {
     llvm::errs() << "fatal error: failed to build __{begin, end}_tm_slow_path\n";
     return StmtError();
   }
 
   ExprResult beginFastResult = BuildCallExpr(Context, *this, txAtomicLoc,
-      "__begin_tm_fast_path", funcType);
+      "__begin_tm_fast_path", funcType, None);
   ExprResult endFastResult = BuildCallExpr(Context, *this, txAtomicLoc,
-      "__end_tm_fast_path", funcType);
+      "__end_tm_fast_path", funcType, None);
   if (beginFastResult.isInvalid() || endFastResult.isInvalid()) {
     llvm::errs() << "fatal error: failed to build __{begin, end}_tm_fast_path\n";
     return StmtError();
