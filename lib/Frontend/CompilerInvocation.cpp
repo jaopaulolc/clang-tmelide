@@ -1995,7 +1995,11 @@ static void ParseLangArgs(LangOptions &Opts, ArgList &Args, InputKind IK,
   }
 
   /// GNU TM Extension
-	if ( Args.hasArg(OPT_fgnu_tm) ) Opts.gnu_tm = true;
+	if ( Args.hasArg(OPT_fgnu_tm) ) {
+    Opts.gnu_tm = true;
+    // FIXME: Not sure if this is ok!
+    PPOpts.Includes.push_back("setjmp.h");
+  }
 
   Opts.IncludeDefaultHeader = Args.hasArg(OPT_finclude_default_header);
 

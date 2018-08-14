@@ -573,6 +573,78 @@ BuildCallExpr(ASTContext& Context, Sema& Sema, SourceLocation srcLocation,
       Args, SourceLocation());
 }
 
+static VarDecl*
+BuildTransactionAtomicJmpBufDecl(Sema &SemaRef, SourceLocation txAtomicLoc) {
+
+  ASTContext& Context = SemaRef.getASTContext();
+
+  QualType jmpbufQualType = Context.getjmp_bufType();
+  if (jmpbufQualType.isNull()) {
+    return nullptr;
+  }
+
+  // Gets reference to IdentifierTable which links names to decl objects
+  IdentifierTable& idt = SemaRef.getPreprocessor().getIdentifierTable();
+  IdentifierInfo* jmpbufVarIdInfo = &idt.get("__tx_jmp_buf");
+  VarDecl* jmpbufVarDecl = VarDecl::Create(Context,
+      SemaRef.getFunctionLevelDeclContext(), txAtomicLoc, txAtomicLoc,
+      jmpbufVarIdInfo, jmpbufQualType, nullptr, StorageClass::SC_Auto);
+
+  return jmpbufVarDecl;
+}
+
+static VarDecl*
+BuildTransactionAtomicSetJmpDecl(Sema &SemaRef,
+    SourceLocation txAtomicLoc,
+    VarDecl* jmpbufVarDecl) {
+
+  ASTContext& Context = SemaRef.getASTContext();
+
+  QualType jmpbufQualType = Context.getjmp_bufType();
+  if (jmpbufQualType.isNull()) {
+    return nullptr;
+  }
+
+  // Gets reference to IdentifierTable which links names to decl objects
+  IdentifierTable& idt = SemaRef.getPreprocessor().getIdentifierTable();
+  IdentifierInfo* setjmpReturnVarIdInfo = &idt.get("__setjmp_ret");
+  VarDecl* setjmpStatusVarDecl = VarDecl::Create(Context,
+      SemaRef.getFunctionLevelDeclContext(), txAtomicLoc, txAtomicLoc,
+      setjmpReturnVarIdInfo, Context.IntTy, nullptr, StorageClass::SC_Auto);
+
+  FunctionProtoType::ExtProtoInfo nonVariadicProtoInfo;
+  nonVariadicProtoInfo.Variadic = false;
+
+  QualType jmpbufPtrQualType =
+    Context.getPointerType(jmpbufVarDecl->getType());
+
+  SmallVector<QualType, 1> ArgTypes;
+  ArgTypes.push_back(jmpbufPtrQualType);
+
+  SmallVector<Expr*, 1> Args;
+  Expr *jmpbufDeclRef = new (Context) DeclRefExpr(jmpbufVarDecl, false,
+      jmpbufVarDecl->getType(), ExprValueKind::VK_RValue, txAtomicLoc);
+  UnaryOperator* jmpbufAddrOf = new (Context) UnaryOperator(jmpbufDeclRef,
+      UnaryOperatorKind::UO_AddrOf, jmpbufPtrQualType,
+      ExprValueKind::VK_RValue, ExprObjectKind::OK_Ordinary, txAtomicLoc);
+  Args.push_back(jmpbufAddrOf);
+
+  QualType setjmpQualType =
+    Context.getFunctionType(Context.IntTy, ArgTypes, nonVariadicProtoInfo);
+  ExprResult R = BuildCallExpr(Context, SemaRef, txAtomicLoc,
+      "setjmp", setjmpQualType, Args);
+  if (R.isInvalid()) {
+    llvm::errs() << "fatal error: failed to build setjmp CallExpr\n";
+    return nullptr;
+  }
+
+  // Initialize __setjmp_ret with return of setjmp
+  CallExpr* setjmpCallExpr = static_cast<CallExpr*>(R.get());
+  setjmpStatusVarDecl->setInit(setjmpCallExpr);
+
+  return setjmpStatusVarDecl;
+}
+
 StmtResult
 Sema::ActOnTransactionAtomicInitStmt(SourceLocation transactionAtomicLoc) {
   return BuildTransactionAtomicInitStmt(transactionAtomicLoc);
@@ -584,6 +656,19 @@ Sema::BuildTransactionAtomicInitStmt(SourceLocation transactionAtomicLoc) {
   // Using '__transaction_atomic' loc for all generated nodes
   SourceLocation txAtomicLoc = transactionAtomicLoc;
 
+  VarDecl* jmpbufVarDecl = BuildTransactionAtomicJmpBufDecl(*this,
+      txAtomicLoc);
+  if (jmpbufVarDecl == nullptr) {
+    llvm::errs() << "fatal error: jmp_buf type is undefined.\n";
+    return StmtError();
+  }
+
+  VarDecl* setjmpVarDecl = BuildTransactionAtomicSetJmpDecl(*this,
+      txAtomicLoc, jmpbufVarDecl);
+  if (setjmpVarDecl == nullptr) {
+    llvm::errs() << "fatal error: failed to build setjmp status VarDecl.\n";
+    return StmtError();
+  }
 
   QualType UInt32_t = Context.getIntTypeForBitwidth(32, /*isSigned*/0);
 
@@ -593,9 +678,29 @@ Sema::BuildTransactionAtomicInitStmt(SourceLocation transactionAtomicLoc) {
   IdentifierInfo* initVarIdInfo = &idt.get("__exec_mode");
   // Declares __exec_mode as a auto 'int' variable within function context
   // XXX Not sure yet which is the correct StorageClass for __exec_mode
-  VarDecl* initVarDecl = VarDecl::Create(Context, this->getFunctionLevelDeclContext(),
-      txAtomicLoc, txAtomicLoc, initVarIdInfo, Context.IntTy,
-      nullptr, StorageClass::SC_Auto);
+  VarDecl* initVarDecl = VarDecl::Create(Context,
+      this->getFunctionLevelDeclContext(), txAtomicLoc,
+      txAtomicLoc, initVarIdInfo, UInt32_t, nullptr, StorageClass::SC_Auto);
+
+  QualType jmpbufPtrQualType =
+    Context.getPointerType(jmpbufVarDecl->getType());
+
+  Expr *jmpbufDeclRef = new (Context) DeclRefExpr(jmpbufVarDecl, false,
+      jmpbufVarDecl->getType(), ExprValueKind::VK_RValue, txAtomicLoc);
+  UnaryOperator* jmpbufAddrOf = new (Context) UnaryOperator(jmpbufDeclRef,
+      UnaryOperatorKind::UO_AddrOf, jmpbufPtrQualType,
+      ExprValueKind::VK_RValue, ExprObjectKind::OK_Ordinary, txAtomicLoc);
+
+  Expr *setjmpDeclRef = new (Context) DeclRefExpr(setjmpVarDecl, false,
+      setjmpVarDecl->getType(), ExprValueKind::VK_RValue, txAtomicLoc);
+
+  SmallVector<QualType, 2> ArgTypes;
+  ArgTypes.push_back(jmpbufPtrQualType);
+  ArgTypes.push_back(setjmpVarDecl->getType());
+
+  SmallVector<Expr*, 2> Args;
+  Args.push_back(jmpbufAddrOf);
+  Args.push_back(setjmpDeclRef);
 
   FunctionProtoType::ExtProtoInfo nonVariadicProtoInfo;
   nonVariadicProtoInfo.Variadic = false;
@@ -603,7 +708,7 @@ Sema::BuildTransactionAtomicInitStmt(SourceLocation transactionAtomicLoc) {
   QualType beginTxQualType =
     Context.getFunctionType(UInt32_t, ArgTypes, nonVariadicProtoInfo);
   ExprResult R = BuildCallExpr(Context, *this, txAtomicLoc,
-      "_ITM_beginTransaction", beginTxQualType, None);
+      "_ITM_beginTransaction", beginTxQualType, Args);
   if (R.isInvalid()) {
     llvm::errs() << "fatal error: failed to build _ITM_beginTransaction\n";
     return StmtError();
@@ -612,7 +717,14 @@ Sema::BuildTransactionAtomicInitStmt(SourceLocation transactionAtomicLoc) {
   CallExpr* beginTxCallExpr = static_cast<CallExpr*>(R.get());
   initVarDecl->setInit(beginTxCallExpr);
 
-  DeclGroupRef initVarDeclGroupRef(initVarDecl);
+  beginTxCallExpr->dumpColor();
+
+  SmallVector<Decl*, 3> Decls;
+  Decls.push_back(jmpbufVarDecl);
+  Decls.push_back(setjmpVarDecl);
+  Decls.push_back(initVarDecl);
+  DeclGroupRef initVarDeclGroupRef =
+    DeclGroupRef::Create(Context, Decls.data(), Decls.size());
   return new(Context) DeclStmt(initVarDeclGroupRef,
       transactionAtomicLoc, transactionAtomicLoc);
 }
@@ -659,8 +771,12 @@ Expr*
 Sema::BuildTransactionAtomicCondStmt(SourceLocation transactionAtomicLoc,
     Stmt* initStmt) {
 
-  DeclStmt* initVarDeclStmt = static_cast<DeclStmt*>(initStmt);
-  VarDecl* initVarDecl = static_cast<VarDecl*>(initVarDeclStmt->getSingleDecl());
+  DeclStmt* VarDecls = static_cast<DeclStmt*>(initStmt);
+  // initStmt is a DeclGroupRef with 3 VerDecl:
+  //  - __tx_jmp_buf
+  //  - __setjmp_ret
+  //  - __exec_mode
+  VarDecl* initVarDecl = static_cast<VarDecl*>(*VarDecls->decl_rbegin());
 
   Expr *lhs, *rhs;
   lhs = new (Context) DeclRefExpr(initVarDecl, false, initVarDecl->getType(),
