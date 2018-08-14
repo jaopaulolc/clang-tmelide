@@ -714,6 +714,7 @@ Sema::BuildTransactionAtomicInitStmt(SourceLocation transactionAtomicLoc) {
     return StmtError();
   }
 
+  // Initialize __exec_mode with return of _ITM_beginTransaction
   CallExpr* beginTxCallExpr = static_cast<CallExpr*>(R.get());
   initVarDecl->setInit(beginTxCallExpr);
 
