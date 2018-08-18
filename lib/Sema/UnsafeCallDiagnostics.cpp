@@ -25,6 +25,14 @@ class TransactionAtomicStmtVisitor :
           Result.Nodes.getNodeAs<CallExpr>("call_expr")) {
         const Decl* callee = callExpr->getCalleeDecl();
         if (callee != nullptr) {
+          const FunctionDecl* FD = callee->getAsFunction();
+          if (FD != nullptr) {
+            if (FD->getName().compare("malloc") == 0 ||
+                FD->getName().compare("calloc") == 0 ||
+                FD->getName().compare("free") == 0) {
+              return;
+            }
+          }
           if (!callee->hasAttr<TransactionSafeAttr>() &&
               !callee->hasAttr<TransactionPureAttr>()) {
             SemaRef.Diag(callExpr->getLocStart(),
