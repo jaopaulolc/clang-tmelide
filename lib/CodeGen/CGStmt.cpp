@@ -620,10 +620,6 @@ CodeGenFunction::EmitTransactionAtomicStmt(const TransactionAtomicStmt &S) {
     EmitStmt(S.getInit());
   }
 
-  // push a cleanup to emit _ITM_commitTransaction on every exit of
-  // TransactionAtomicStmt
-  EHStack.pushCleanup<TransactionAtomicStmtCleanup>(NormalCleanup,
-      S.getTerm());
 
   // Just emit the conditional branch.
   llvm::BasicBlock *ThenBlock = createBasicBlock("if.then");
@@ -662,8 +658,14 @@ CodeGenFunction::EmitTransactionAtomicStmt(const TransactionAtomicStmt &S) {
   S.getSlowPath()->dumpPretty(this->getContext());
   S.getFastPath()->dumpPretty(this->getContext());
 
-  // Emit the continuation block for code after the if.
-  EmitBlock(ContBlock, true);
+  {
+    RunCleanupsScope TransactionAtomicScope(*this);
+    EHStack.pushCleanup<TransactionAtomicStmtCleanup>(NormalCleanup,
+        S.getTerm());
+
+    // Emit the continuation block for code after the if.
+    EmitBlock(ContBlock, true);
+  }
 }
 
 void CodeGenFunction::EmitIfStmt(const IfStmt &S) {
