@@ -39,6 +39,8 @@
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/SmallVector.h"
 
+#include "TreeTransform.h"
+
 using namespace clang;
 using namespace sema;
 
@@ -807,6 +809,14 @@ Sema::ActOnTransactionAtomicStmt(SourceLocation transactionAtomicLoc,
       compoundStmt, termStmt);
 }
 
+namespace {
+class TransformFastPath : public TreeTransform<TransformFastPath> {
+  typedef TreeTransform<TransformFastPath> BaseTransform;
+public:
+  TransformFastPath(Sema &SemaRef) : BaseTransform(SemaRef) {}
+};
+} // end anonymous namespace
+
 StmtResult
 Sema::BuildTransactionAtomicStmt(SourceLocation transactionAtomicLoc,
     Stmt* initStmt, Expr* condExpr, Stmt* compoundStmt, Stmt* termStmt) {
@@ -847,14 +857,25 @@ Sema::BuildTransactionAtomicStmt(SourceLocation transactionAtomicLoc,
   CallExpr* endFastPathCallExpr = static_cast<CallExpr*>(endFastResult.get());
 
   CompoundStmt* originalCS = static_cast<CompoundStmt*>(compoundStmt);
+  TransformFastPath TT(*this);
+  StmtResult R = TT.TransformCompoundStmt(originalCS, /*IsStmtExpr*/false);
 
-  SmallVector<Stmt*, 2> slowPathStmts;
+  if (R.isInvalid()) {
+    llvm::errs() << "fatal error: failed to transform TAS CompoundStmt\n";
+  }
+  //R.get()->dumpColor();
+  CompoundStmt* newCS = static_cast<CompoundStmt*>(R.get());
+
+  SmallVector<Stmt*, 32> slowPathStmts;
   SmallVector<Stmt*, 32> fastPathStmts;
 
   slowPathStmts.push_back(beginSlowPathCallExpr);
   fastPathStmts.push_back(beginFastPathCallExpr);
   for (Stmt* S : originalCS->body()) {
     fastPathStmts.push_back(S);
+  }
+  for (Stmt* S : newCS->body()) {
+    slowPathStmts.push_back(S);
   }
   slowPathStmts.push_back(endSlowPathCallExpr);
   fastPathStmts.push_back(endFastPathCallExpr);
