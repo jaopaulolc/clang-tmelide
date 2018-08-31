@@ -787,7 +787,7 @@ Sema::BuildTransactionAtomicCondStmt(SourceLocation transactionAtomicLoc,
   rhs = IntegerLiteral::Create(Context, initAPInt, Context.IntTy,
       transactionAtomicLoc);
   BinaryOperator* execModeAndOp = new (Context) BinaryOperator(lhs, rhs,
-      BinaryOperatorKind::BO_And, Context.BoolTy, ExprValueKind::VK_LValue,
+      BinaryOperatorKind::BO_EQ, Context.BoolTy, ExprValueKind::VK_LValue,
       ExprObjectKind::OK_Ordinary, transactionAtomicLoc, FPOptions());
   //execModeAndOp->dump();
   //ImplicitCastExpr* initVarAssignCastToBool =
