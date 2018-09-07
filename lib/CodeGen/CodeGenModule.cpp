@@ -1216,6 +1216,14 @@ void CodeGenModule::SetFunctionAttributes(GlobalDecl GD, llvm::Function *F,
   if (const SectionAttr *SA = FD->getAttr<SectionAttr>())
     F->setSection(SA->getName());
 
+  // GNU TM Extension
+  if (FD->hasAttr<TransactionPureAttr>()) {
+    F->addFnAttr(llvm::Attribute::TransactionPure);
+  }
+  if (FD->hasAttr<TransactionSafeAttr>()) {
+    F->addFnAttr(llvm::Attribute::TransactionSafe);
+  }
+
   if (FD->isReplaceableGlobalAllocationFunction()) {
     // A replaceable global allocation function does not act like a builtin by
     // default, only if it is invoked by a new-expression or delete-expression.
