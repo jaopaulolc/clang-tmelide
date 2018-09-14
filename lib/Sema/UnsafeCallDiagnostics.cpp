@@ -29,7 +29,9 @@ class TransactionAtomicStmtVisitor :
           if (FD != nullptr) {
             if (FD->getName().compare("malloc") == 0 ||
                 FD->getName().compare("calloc") == 0 ||
-                FD->getName().compare("free") == 0) {
+                FD->getName().compare("free") == 0   ||
+                FD->getName().compare("memset") == 0 ||
+                FD->getName().compare("memcpy") == 0) {
               return;
             }
           }
