@@ -862,10 +862,10 @@ void CodeGenFunction::StartFunction(GlobalDecl GD,
     Fn->addFnAttr(llvm::Attribute::SafeStack);
 
   // GNU TM Extension
-  if (D->hasAttr<TransactionPureAttr>()) {
+  if (D && D->hasAttr<TransactionPureAttr>()) {
     Fn->addFnAttr(llvm::Attribute::TransactionPure);
   }
-  if (D->hasAttr<TransactionSafeAttr>()) {
+  if (D && D->hasAttr<TransactionSafeAttr>()) {
     Fn->addFnAttr(llvm::Attribute::TransactionSafe);
   }
 
