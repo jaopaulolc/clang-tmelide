@@ -852,9 +852,7 @@ Sema::BuildTransactionAtomicStmt(SourceLocation transactionAtomicLoc,
   }
 
   CallExpr* beginSlowPathCallExpr = static_cast<CallExpr*>(beginSlowResult.get());
-  CallExpr* endSlowPathCallExpr = static_cast<CallExpr*>(endSlowResult.get());
   CallExpr* beginFastPathCallExpr = static_cast<CallExpr*>(beginFastResult.get());
-  CallExpr* endFastPathCallExpr = static_cast<CallExpr*>(endFastResult.get());
 
   CompoundStmt* originalCS = static_cast<CompoundStmt*>(compoundStmt);
   TransformFastPath TT(*this);
@@ -877,8 +875,6 @@ Sema::BuildTransactionAtomicStmt(SourceLocation transactionAtomicLoc,
   for (Stmt* S : newCS->body()) {
     slowPathStmts.push_back(S);
   }
-  slowPathStmts.push_back(endSlowPathCallExpr);
-  fastPathStmts.push_back(endFastPathCallExpr);
 
   CompoundStmt* slowPath = CompoundStmt::Create(Context, slowPathStmts,
       txAtomicLoc, txAtomicLoc);
