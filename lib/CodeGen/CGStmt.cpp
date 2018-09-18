@@ -634,6 +634,9 @@ CodeGenFunction::EmitTransactionAtomicStmt(const TransactionAtomicStmt &S) {
   incrementProfileCounter(&S);
   {
     RunCleanupsScope ThenScope(*this);
+    RunCleanupsScope TransactionAtomicScope(*this);
+    EHStack.pushCleanup<TransactionAtomicStmtCleanup>(NormalCleanup,
+      S.getTerm());
     EmitStmt(S.getSlowPath());
   }
   EmitBranch(ContBlock);
@@ -647,6 +650,9 @@ CodeGenFunction::EmitTransactionAtomicStmt(const TransactionAtomicStmt &S) {
     }
     {
       RunCleanupsScope ElseScope(*this);
+      RunCleanupsScope TransactionAtomicScope(*this);
+      EHStack.pushCleanup<TransactionAtomicStmtCleanup>(NormalCleanup,
+        S.getTerm());
       EmitStmt(S.getFastPath());
     }
     {
@@ -658,14 +664,7 @@ CodeGenFunction::EmitTransactionAtomicStmt(const TransactionAtomicStmt &S) {
   S.getSlowPath()->dumpPretty(this->getContext());
   S.getFastPath()->dumpPretty(this->getContext());
 
-  {
-    RunCleanupsScope TransactionAtomicScope(*this);
-    EHStack.pushCleanup<TransactionAtomicStmtCleanup>(NormalCleanup,
-        S.getTerm());
-
-    // Emit the continuation block for code after the if.
-    EmitBlock(ContBlock, true);
-  }
+  EmitBlock(ContBlock, true);
 }
 
 void CodeGenFunction::EmitIfStmt(const IfStmt &S) {
