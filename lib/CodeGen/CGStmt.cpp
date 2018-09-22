@@ -645,8 +645,8 @@ CodeGenFunction::EmitTransactionAtomicStmt(const TransactionAtomicStmt &S) {
       EmitStmt(S.getFastPath());
     }
     EmitBranch(ContBlock);
-  S.getSlowPath()->dumpPretty(this->getContext());
-  S.getFastPath()->dumpPretty(this->getContext());
+  S.getSlowPath()->dumpColor();
+  S.getFastPath()->dumpColor();
 
   EmitBlock(ContBlock, true);
 }
