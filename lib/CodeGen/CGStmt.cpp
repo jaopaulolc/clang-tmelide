@@ -637,25 +637,14 @@ CodeGenFunction::EmitTransactionAtomicStmt(const TransactionAtomicStmt &S) {
   }
   EmitBranch(ContBlock);
 
-  // Emit the 'else' code if present.
-  //if (const Stmt *Else = S.getSlowPath()) {
-    {
-      // There is no need to emit line number for an unconditional branch.
-      auto NL = ApplyDebugLocation::CreateEmpty(*this);
-      EmitBlock(ElseBlock);
-    }
+    EmitBlock(ElseBlock);
     {
       RunCleanupsScope ElseScope(*this);
       EHStack.pushCleanup<TransactionAtomicStmtCleanup>(NormalCleanup,
         S.getTerm());
       EmitStmt(S.getFastPath());
     }
-    {
-      // There is no need to emit line number for an unconditional branch.
-      auto NL = ApplyDebugLocation::CreateEmpty(*this);
-      EmitBranch(ContBlock);
-    }
-  //}
+    EmitBranch(ContBlock);
   S.getSlowPath()->dumpPretty(this->getContext());
   S.getFastPath()->dumpPretty(this->getContext());
 
