@@ -812,8 +812,111 @@ Sema::ActOnTransactionAtomicStmt(SourceLocation transactionAtomicLoc,
 namespace {
 class TransformFastPath : public TreeTransform<TransformFastPath> {
   typedef TreeTransform<TransformFastPath> BaseTransform;
+  SourceManager& SM;
+  FileID MainFileID;
+  llvm::DenseMap<Decl *, Decl *> TransformedVarDecls;
 public:
-  TransformFastPath(Sema &SemaRef) : BaseTransform(SemaRef) {}
+  TransformFastPath(Sema &SemaRef) : BaseTransform(SemaRef),
+      SM(SemaRef.getSourceManager()) {
+    MainFileID = SM.getMainFileID();
+  }
+  ExprResult TransformDeclRefExpr(DeclRefExpr *E) {
+    if (isa<VarDecl>(E->getDecl()) &&
+        TransformedVarDecls.count(E->getDecl()) != 0) {
+      VarDecl* VD = cast<VarDecl>(TransformedVarDecls[E->getDecl()]);
+      ExprResult R = getDerived().RebuildDeclRefExpr(VD->getQualifierLoc(),
+          VD, E->getNameInfo(), nullptr);
+      if (R.isInvalid()) {
+        llvm::errs() << "fatal error: failed to transform DeclRefExpr\n";
+        return ExprError();
+      }
+      return R;
+    }
+    NestedNameSpecifierLoc QualifierLoc;
+    if (E->getQualifierLoc()) {
+      QualifierLoc
+        = getDerived().TransformNestedNameSpecifierLoc(E->getQualifierLoc());
+      if (!QualifierLoc)
+        return ExprError();
+    }
+
+    ValueDecl *ND
+      = cast_or_null<ValueDecl>(getDerived().TransformDecl(E->getLocation(),
+                                                           E->getDecl()));
+    if (!ND)
+      return ExprError();
+
+    DeclarationNameInfo NameInfo = E->getNameInfo();
+    if (NameInfo.getName()) {
+      NameInfo = getDerived().TransformDeclarationNameInfo(NameInfo);
+      if (!NameInfo.getName())
+        return ExprError();
+    }
+
+    if (!getDerived().AlwaysRebuild() &&
+        QualifierLoc == E->getQualifierLoc() &&
+        ND == E->getDecl() &&
+        NameInfo.getName() == E->getDecl()->getDeclName() &&
+        !E->hasExplicitTemplateArgs()) {
+
+      // Mark it referenced in the new context regardless.
+      // FIXME: this is a bit instantiation-specific.
+      SemaRef.MarkDeclRefReferenced(E);
+
+      return E;
+    }
+
+    TemplateArgumentListInfo TransArgs, *TemplateArgs = nullptr;
+    if (E->hasExplicitTemplateArgs()) {
+      TemplateArgs = &TransArgs;
+      TransArgs.setLAngleLoc(E->getLAngleLoc());
+      TransArgs.setRAngleLoc(E->getRAngleLoc());
+      if (getDerived().TransformTemplateArguments(E->getTemplateArgs(),
+                                                  E->getNumTemplateArgs(),
+                                                  TransArgs))
+        return ExprError();
+    }
+
+    return getDerived().RebuildDeclRefExpr(QualifierLoc, ND, NameInfo,
+                                           TemplateArgs);
+  }
+  StmtResult TransformDeclStmt(DeclStmt *S) {
+    bool DeclChanged = false;
+    SmallVector<Decl *, 4> Decls;
+    // Gets reference to IdentifierTable which links names to decl objects
+    IdentifierTable& idt = SemaRef.getPreprocessor().getIdentifierTable();
+    for (auto *D : S->decls()) {
+      Decl* Transformed;
+      //FileID DeclFileID = SM.getFileID(D->getLocation());
+      if (isa<VarDecl>(D) /*&& DeclFileID == MainFileID*/) {
+        VarDecl* OrigVD = cast<VarDecl>(D);
+        IdentifierInfo* VarDeclIDInfo = &idt.get(("__" + OrigVD->getName()).str());
+        VarDecl* newVD = VarDecl::Create(SemaRef.getASTContext(),
+            D->getDeclContext(), D->getLocStart(),
+            D->getLocStart(), VarDeclIDInfo, OrigVD->getType(),
+            OrigVD->getTypeSourceInfo(), OrigVD->getStorageClass());
+        //newVD->dumpColor();
+        TransformedVarDecls[D] = newVD;
+        ExprResult E = getDerived().TransformExpr(OrigVD->getInit());
+        newVD->setInit(E.get());
+        Transformed = newVD;
+      } else {
+        Transformed = getDerived().TransformDefinition(D->getLocation(), D);
+      }
+      if (!Transformed)
+        return StmtError();
+
+      if (Transformed != D)
+        DeclChanged = true;
+
+      Decls.push_back(Transformed);
+    }
+
+    if (!getDerived().AlwaysRebuild() && !DeclChanged)
+      return S;
+
+    return getDerived().RebuildDeclStmt(Decls, S->getStartLoc(), S->getEndLoc());
+  }
 };
 } // end anonymous namespace
 
