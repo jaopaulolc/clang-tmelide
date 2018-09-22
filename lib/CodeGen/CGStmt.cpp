@@ -631,7 +631,6 @@ CodeGenFunction::EmitTransactionAtomicStmt(const TransactionAtomicStmt &S) {
   incrementProfileCounter(&S);
   {
     RunCleanupsScope ThenScope(*this);
-    RunCleanupsScope TransactionAtomicScope(*this);
     EHStack.pushCleanup<TransactionAtomicStmtCleanup>(NormalCleanup,
       S.getTerm());
     EmitStmt(S.getSlowPath());
@@ -647,7 +646,6 @@ CodeGenFunction::EmitTransactionAtomicStmt(const TransactionAtomicStmt &S) {
     }
     {
       RunCleanupsScope ElseScope(*this);
-      RunCleanupsScope TransactionAtomicScope(*this);
       EHStack.pushCleanup<TransactionAtomicStmtCleanup>(NormalCleanup,
         S.getTerm());
       EmitStmt(S.getFastPath());
