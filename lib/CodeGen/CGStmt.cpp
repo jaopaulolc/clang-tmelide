@@ -637,14 +637,15 @@ CodeGenFunction::EmitTransactionAtomicStmt(const TransactionAtomicStmt &S) {
   }
   EmitBranch(ContBlock);
 
-    EmitBlock(ElseBlock);
-    {
-      RunCleanupsScope ElseScope(*this);
-      EHStack.pushCleanup<TransactionAtomicStmtCleanup>(NormalCleanup,
-        S.getTerm());
-      EmitStmt(S.getFastPath());
-    }
-    EmitBranch(ContBlock);
+  EmitBlock(ElseBlock);
+  {
+    RunCleanupsScope ElseScope(*this);
+    EHStack.pushCleanup<TransactionAtomicStmtCleanup>(NormalCleanup,
+      S.getTerm());
+    EmitStmt(S.getFastPath());
+  }
+  EmitBranch(ContBlock);
+
   S.getSlowPath()->dumpColor();
   S.getFastPath()->dumpColor();
 
