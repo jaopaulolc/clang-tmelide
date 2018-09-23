@@ -559,7 +559,6 @@ BuildCallExpr(ASTContext& Context, Sema& Sema, SourceLocation srcLocation,
         srcLocation, idInfo, E->getType(), nullptr, StorageClass::SC_None,
         nullptr);
     Params.push_back(PVD);
-    PVD->dumpColor();
     cnt++;
   }
   if (cnt > 0)
@@ -719,8 +718,6 @@ Sema::BuildTransactionAtomicInitStmt(SourceLocation transactionAtomicLoc) {
   // Initialize __exec_mode with return of _ITM_beginTransaction
   CallExpr* beginTxCallExpr = static_cast<CallExpr*>(R.get());
   initVarDecl->setInit(beginTxCallExpr);
-
-  beginTxCallExpr->dumpColor();
 
   SmallVector<Decl*, 3> Decls;
   Decls.push_back(jmpbufVarDecl);
