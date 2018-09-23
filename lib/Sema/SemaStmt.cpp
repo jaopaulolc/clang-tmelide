@@ -588,7 +588,7 @@ BuildTransactionAtomicJmpBufDecl(Sema &SemaRef, SourceLocation txAtomicLoc) {
   IdentifierTable& idt = SemaRef.getPreprocessor().getIdentifierTable();
   IdentifierInfo* jmpbufVarIdInfo = &idt.get("__tx_jmp_buf");
   VarDecl* jmpbufVarDecl = VarDecl::Create(Context,
-      SemaRef.getFunctionLevelDeclContext(), txAtomicLoc, txAtomicLoc,
+      SemaRef.CurContext, txAtomicLoc, txAtomicLoc,
       jmpbufVarIdInfo, jmpbufQualType, nullptr, StorageClass::SC_Auto);
 
   return jmpbufVarDecl;
@@ -610,7 +610,7 @@ BuildTransactionAtomicSetJmpDecl(Sema &SemaRef,
   IdentifierTable& idt = SemaRef.getPreprocessor().getIdentifierTable();
   IdentifierInfo* setjmpReturnVarIdInfo = &idt.get("__setjmp_ret");
   VarDecl* setjmpStatusVarDecl = VarDecl::Create(Context,
-      SemaRef.getFunctionLevelDeclContext(), txAtomicLoc, txAtomicLoc,
+      SemaRef.CurContext, txAtomicLoc, txAtomicLoc,
       setjmpReturnVarIdInfo, Context.IntTy, nullptr, StorageClass::SC_Auto);
 
   FunctionProtoType::ExtProtoInfo nonVariadicProtoInfo;
@@ -680,7 +680,7 @@ Sema::BuildTransactionAtomicInitStmt(SourceLocation transactionAtomicLoc) {
   // Declares __exec_mode as a auto 'int' variable within function context
   // XXX Not sure yet which is the correct StorageClass for __exec_mode
   VarDecl* initVarDecl = VarDecl::Create(Context,
-      this->getFunctionLevelDeclContext(), txAtomicLoc,
+      this->CurContext, txAtomicLoc,
       txAtomicLoc, initVarIdInfo, UInt32_t, nullptr, StorageClass::SC_Auto);
 
   QualType jmpbufPtrQualType =
