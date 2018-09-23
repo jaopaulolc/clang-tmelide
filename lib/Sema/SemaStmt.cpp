@@ -625,10 +625,10 @@ BuildTransactionAtomicSetJmpDecl(Sema &SemaRef,
   SmallVector<Expr*, 1> Args;
   Expr *jmpbufDeclRef = new (Context) DeclRefExpr(jmpbufVarDecl, false,
       jmpbufVarDecl->getType(), ExprValueKind::VK_RValue, txAtomicLoc);
-  UnaryOperator* jmpbufAddrOf = new (Context) UnaryOperator(jmpbufDeclRef,
-      UnaryOperatorKind::UO_AddrOf, jmpbufPtrQualType,
-      ExprValueKind::VK_RValue, ExprObjectKind::OK_Ordinary, txAtomicLoc);
-  Args.push_back(jmpbufAddrOf);
+  ImplicitCastExpr* jmpbufICE = ImplicitCastExpr::Create(Context,
+      jmpbufPtrQualType, CK_ArrayToPointerDecay, jmpbufDeclRef, nullptr,
+      VK_RValue);
+  Args.push_back(jmpbufICE);
 
   QualType setjmpQualType =
     Context.getFunctionType(Context.IntTy, ArgTypes, nonVariadicProtoInfo);
@@ -700,8 +700,14 @@ Sema::BuildTransactionAtomicInitStmt(SourceLocation transactionAtomicLoc) {
   ArgTypes.push_back(setjmpVarDecl->getType());
 
   SmallVector<Expr*, 2> Args;
-  Args.push_back(jmpbufAddrOf);
-  Args.push_back(setjmpDeclRef);
+  ImplicitCastExpr* jmpbufICE = ImplicitCastExpr::Create(Context,
+      jmpbufAddrOf->getType(), CK_LValueToRValue, jmpbufAddrOf, nullptr,
+      VK_RValue);
+  Args.push_back(jmpbufICE);
+  ImplicitCastExpr* setjmpICE = ImplicitCastExpr::Create(Context,
+      setjmpDeclRef->getType(), CK_LValueToRValue, setjmpDeclRef, nullptr,
+      VK_RValue);
+  Args.push_back(setjmpICE);
 
   FunctionProtoType::ExtProtoInfo nonVariadicProtoInfo;
   nonVariadicProtoInfo.Variadic = false;
@@ -781,6 +787,8 @@ Sema::BuildTransactionAtomicCondStmt(SourceLocation transactionAtomicLoc,
   Expr *lhs, *rhs;
   lhs = new (Context) DeclRefExpr(initVarDecl, false, initVarDecl->getType(),
       ExprValueKind::VK_LValue, transactionAtomicLoc);
+  lhs = ImplicitCastExpr::Create(Context, lhs->getType(), CK_LValueToRValue,
+      lhs, nullptr, VK_RValue);
 
   llvm::APInt initAPInt((unsigned)Context.getTypeSize(Context.IntTy), 0x1);
   rhs = IntegerLiteral::Create(Context, initAPInt, Context.IntTy,
