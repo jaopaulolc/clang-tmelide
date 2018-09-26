@@ -712,10 +712,7 @@ Sema::BuildTransactionAtomicExecModeDeclStmt(SourceLocation TxAtomicLoc,
   ArgTypes.push_back(setjmpVarDecl->getType());
 
   SmallVector<Expr*, 2> Args;
-  ImplicitCastExpr* jmpbufICE = ImplicitCastExpr::Create(Context,
-      jmpbufAddrOf->getType(), CK_LValueToRValue, jmpbufAddrOf, nullptr,
-      VK_RValue);
-  Args.push_back(jmpbufICE);
+  Args.push_back(jmpbufAddrOf);
   ImplicitCastExpr* setjmpICE = ImplicitCastExpr::Create(Context,
       setjmpDeclRef->getType(), CK_LValueToRValue, setjmpDeclRef, nullptr,
       VK_RValue);
