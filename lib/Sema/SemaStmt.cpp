@@ -658,8 +658,7 @@ Sema::BuildTransactionAtomicSetJmpDeclStmt(SourceLocation TxAtomicLoc,
   Decls.push_back(setjmpStatusVarDecl);
   DeclGroupRef setjmpStatusDeclGroupRef =
     DeclGroupRef::Create(Context, Decls.data(), Decls.size());
-  return new(Context) DeclStmt(setjmpStatusDeclGroupRef,
-      TxAtomicLoc, TxAtomicLoc);
+  return new(Context) DeclStmt(setjmpStatusDeclGroupRef, TxAtomicLoc, TxAtomicLoc);
 }
 
 StmtResult
@@ -742,8 +741,7 @@ Sema::BuildTransactionAtomicExecModeDeclStmt(SourceLocation TxAtomicLoc,
   Decls.push_back(execModeVarDecl);
   DeclGroupRef execModeDeclGroupRef =
     DeclGroupRef::Create(Context, Decls.data(), Decls.size());
-  return new(Context) DeclStmt(execModeDeclGroupRef,
-      TxAtomicLoc, TxAtomicLoc);
+  return new(Context) DeclStmt(execModeDeclGroupRef, TxAtomicLoc, TxAtomicLoc);
 }
 
 StmtResult
@@ -772,8 +770,7 @@ Sema::BuildTransactionAtomicTermStmt(SourceLocation TxAtomicLoc) {
   SmallVector<Stmt*, 4> commitStmts;
   commitStmts.push_back(commitTxCallExpr);
 
-  return CompoundStmt::Create(Context, commitStmts,
-      TxAtomicLoc, TxAtomicLoc);
+  return CompoundStmt::Create(Context, commitStmts, TxAtomicLoc, TxAtomicLoc);
 }
 
 ExprResult
