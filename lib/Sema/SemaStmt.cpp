@@ -555,7 +555,7 @@ BuildCallExpr(ASTContext& Context, Sema& Sema, SourceLocation srcLocation,
   for (Expr* E : Args) {
     IdentifierInfo* idInfo =
       &idt.get(("__" + functionName + "_arg_" + Twine(cnt)).str());
-    ParmVarDecl *PVD = ParmVarDecl::Create(Context,  declCTX, srcLocation,
+    ParmVarDecl *PVD = ParmVarDecl::Create(Context, lsd, srcLocation,
         srcLocation, idInfo, E->getType(), nullptr, StorageClass::SC_None,
         nullptr);
     Params.push_back(PVD);
