@@ -625,17 +625,17 @@ Sema::BuildTransactionAtomicSetJmpDeclStmt(SourceLocation TxAtomicLoc,
   FunctionProtoType::ExtProtoInfo nonVariadicProtoInfo;
   nonVariadicProtoInfo.Variadic = false;
 
-  QualType jmpbufPtrQualType =
-    Context.getPointerType(jmpbufVarDecl->getType());
+  QualType jmpbufArrayDecayType =
+    Context.getArrayDecayedType(jmpbufVarDecl->getType());
 
   SmallVector<QualType, 1> ArgTypes;
-  ArgTypes.push_back(jmpbufPtrQualType);
+  ArgTypes.push_back(jmpbufArrayDecayType);
 
   SmallVector<Expr*, 1> Args;
   Expr *jmpbufDeclRef = new (Context) DeclRefExpr(jmpbufVarDecl, false,
       jmpbufVarDecl->getType(), VK_LValue, TxAtomicLoc);
   ImplicitCastExpr* jmpbufICE = ImplicitCastExpr::Create(Context,
-      jmpbufPtrQualType, CK_ArrayToPointerDecay, jmpbufDeclRef, nullptr,
+      jmpbufVarDecl->getType(), CK_ArrayToPointerDecay, jmpbufDeclRef, nullptr,
       VK_RValue);
   Args.push_back(jmpbufICE);
 
