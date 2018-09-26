@@ -616,7 +616,9 @@ namespace {
 void
 CodeGenFunction::EmitTransactionAtomicStmt(const TransactionAtomicStmt &S) {
 
-  EmitStmt(S.getInit());
+  EmitStmt(S.getJmpBufStmt());
+  EmitStmt(S.getSetJmpStmt());
+  EmitStmt(S.getExecModeStmt());
 
   // Just emit the conditional branch.
   llvm::BasicBlock *ThenBlock = createBasicBlock("if.then");

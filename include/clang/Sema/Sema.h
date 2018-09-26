@@ -3720,23 +3720,26 @@ public:
                                  ArrayRef<const Attr*> Attrs,
                                  Stmt *SubStmt);
 
+  StmtResult ActOnTransactionAtomicStmt(SourceLocation TxAtomicLoc,
+      Stmt* JmpBufDeclStmt, Stmt* SetJmpDeclStmt, Stmt* ExecModeDeclStmt,
+      Expr* condExpr, Stmt* compoundStmt, Stmt* termStmt);
+  StmtResult BuildTransactionAtomicStmt(SourceLocation TxAtomicLoc,
+      Stmt* JmpBufDeclStmt, Stmt* SetJmpDeclStmt, Stmt* ExecModeDeclStmt,
+      Expr* condExpr, Stmt* compoundStmt, Stmt* termStmt);
+
+  StmtResult BuildTransactionAtomicJmpBufDeclStmt(SourceLocation TxAtomicLoc);
+  StmtResult BuildTransactionAtomicSetJmpDeclStmt(SourceLocation TxAtomicLoc,
+      Stmt* JmpBufDeclStmt);
+  StmtResult BuildTransactionAtomicExecModeDeclStmt(SourceLocation TxAtomicLoc,
+      Stmt* JmpBufDeclStmt, Stmt* SetJmpDeclStmt);
+
+  ExprResult BuildTransactionAtomicCondStmt(SourceLocation TxAtomicLoc,
+      Stmt* ExecModeDeclStmt);
+
+  StmtResult ActOnTransactionAtomicTermStmt(SourceLocation TxAtomicLoc);
+  StmtResult BuildTransactionAtomicTermStmt(SourceLocation TxAtomicLoc);
+
   class ConditionResult;
-
-  StmtResult ActOnTransactionAtomicStmt(SourceLocation transactionAtomicLoc,
-      Stmt* initStmt, Expr* condExpr, Stmt* compoundStmt, Stmt* termStmt);
-  StmtResult BuildTransactionAtomicStmt(SourceLocation transactionAtomicLoc,
-      Stmt* initStmt, Expr* condExpr, Stmt* compoundStmt, Stmt* termStmt);
-
-  StmtResult ActOnTransactionAtomicInitStmt(SourceLocation transactionAtomicLoc);
-  StmtResult BuildTransactionAtomicInitStmt(SourceLocation transactionAtomicLoc);
-
-  StmtResult ActOnTransactionAtomicTermStmt(SourceLocation transactionAtomicLoc);
-  StmtResult BuildTransactionAtomicTermStmt(SourceLocation transactionAtomicLoc);
-
-  Expr* ActOnTransactionAtomicCondStmt(SourceLocation transactionAtomicLoc,
-      Stmt* initVarDeclStmt);
-  Expr* BuildTransactionAtomicCondStmt(SourceLocation transactionAtomicLoc,
-      Stmt* initVarDeclStmt);
 
   StmtResult ActOnIfStmt(SourceLocation IfLoc, bool IsConstexpr,
                          Stmt *InitStmt,

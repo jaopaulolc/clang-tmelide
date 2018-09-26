@@ -1140,12 +1140,20 @@ StmtResult Parser::ParseTransactionAtomicStmt() {
   bool C99orCXX = getLangOpts().C99 || getLangOpts().CPlusPlus;
   ParseScope transactionScope(this, Scope::DeclScope | Scope::ControlScope, C99orCXX);
 
-  StmtResult initStmt =
-    Actions.ActOnTransactionAtomicInitStmt(transactionAtomicLoc);
+  StmtResult JmpBufDeclStmt =
+    Actions.BuildTransactionAtomicJmpBufDeclStmt(transactionAtomicLoc);
 
-  Expr* condExpr =
-    Actions.ActOnTransactionAtomicCondStmt(transactionAtomicLoc,
-        initStmt.get());
+  StmtResult SetJmpBufStatusDeclStmt =
+    Actions.BuildTransactionAtomicSetJmpDeclStmt(transactionAtomicLoc,
+        JmpBufDeclStmt.get());
+
+  StmtResult ExecModeDeclStmt =
+    Actions.BuildTransactionAtomicExecModeDeclStmt(transactionAtomicLoc,
+        JmpBufDeclStmt.get(), SetJmpBufStatusDeclStmt.get());
+
+  ExprResult condExpr =
+    Actions.BuildTransactionAtomicCondStmt(transactionAtomicLoc,
+        ExecModeDeclStmt.get());
 
   StmtResult termStmt =
     Actions.ActOnTransactionAtomicTermStmt(transactionAtomicLoc);
@@ -1154,11 +1162,9 @@ StmtResult Parser::ParseTransactionAtomicStmt() {
 
   transactionScope.Exit();
 
-  StmtResult transactionAtomicStmt =
-    Actions.ActOnTransactionAtomicStmt(transactionAtomicLoc,
-        initStmt.get(), condExpr, compoundStmt.get(), termStmt.get());
-
-	return transactionAtomicStmt;
+  return Actions.ActOnTransactionAtomicStmt(transactionAtomicLoc, JmpBufDeclStmt.get(),
+      SetJmpBufStatusDeclStmt.get(), ExecModeDeclStmt.get(), condExpr.get(),
+      compoundStmt.get(), termStmt.get());
 }
 
 /// ParseIfStatement

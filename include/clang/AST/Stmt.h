@@ -932,20 +932,25 @@ public:
 /// TransactionAtomicStmt - This represents an __transaction_atomic
 ///
 class TransactionAtomicStmt: public Stmt {
-  enum { INIT, COND, SLOWPATH, FASTPATH, TERM, END_EXPR};
+  enum { JMPBUF, SETJMP, EXECMODE, COND, SLOWPATH, FASTPATH, TERM, END_EXPR};
   Stmt* SubExprs[END_EXPR];
 
   SourceLocation SlowPathLoc;
   SourceLocation FastPathLoc;
 
 public:
-  TransactionAtomicStmt(const ASTContext &C, Stmt* init, SourceLocation SPL,
-         Expr *cond, Stmt *slowpath, SourceLocation FPL, Stmt *fastpath, Stmt* term);
-  /// \brief Build an empty if/then/else statement
+  TransactionAtomicStmt(const ASTContext &C, Stmt* JmpBufStmt, Stmt* SetJmpStmt,
+      Stmt* ExecModeStmt, SourceLocation SPL, Expr *cond, Stmt *slowpath,
+      SourceLocation FPL, Stmt *fastpath, Stmt* term);
+
   explicit TransactionAtomicStmt(EmptyShell Empty) : Stmt(TransactionAtomicStmtClass, Empty) { }
 
-  const Stmt *getInit() const { return SubExprs[INIT]; }
-  void setInit(Stmt *S) { SubExprs[INIT] = S; }
+  const Stmt *getJmpBufStmt() const { return SubExprs[JMPBUF]; }
+  void setJmpBufStmt(Stmt *S) { SubExprs[JMPBUF] = S; }
+  const Stmt *getSetJmpStmt() const { return SubExprs[SETJMP]; }
+  void setSetJmpStmt(Stmt *S) { SubExprs[SETJMP] = S; }
+  const Stmt *getExecModeStmt() const { return SubExprs[EXECMODE]; }
+  void setExecModeStmt(Stmt *S) { SubExprs[EXECMODE] = S; }
   const Expr *getCond() const { return reinterpret_cast<Expr*>(SubExprs[COND]);}
   void setCond(Expr *E) { SubExprs[COND] = reinterpret_cast<Stmt *>(E); }
   const Stmt *getSlowPath() const { return SubExprs[SLOWPATH]; }
@@ -955,7 +960,9 @@ public:
   const Stmt *getTerm() const { return SubExprs[TERM]; }
   void setTerm(Stmt *S) { SubExprs[TERM] = S; }
 
-  Stmt *getInit() { return SubExprs[INIT]; }
+  Stmt *getJmpBufStmt() { return SubExprs[JMPBUF]; }
+  Stmt *getSetJmpStmt() { return SubExprs[SETJMP]; }
+  Stmt *getExecModeStmt() { return SubExprs[EXECMODE]; }
   Expr *getCond() { return reinterpret_cast<Expr*>(SubExprs[COND]); }
   Stmt *getSlowPath() { return SubExprs[SLOWPATH]; }
   Stmt *getFastPath() { return SubExprs[FASTPATH]; }
