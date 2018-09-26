@@ -545,7 +545,7 @@ BuildCallExpr(ASTContext& Context, Sema& Sema, SourceLocation srcLocation,
       srcLocation, srcLocation, LinkageSpecDecl::lang_c,
       /*hasBrace*/false);
 
-  FunctionDecl* beginTxDecl = FunctionDecl::Create(Context, lsd,
+  FunctionDecl* FD = FunctionDecl::Create(Context, lsd,
       srcLocation, *declNameInfo, functionType,
       /*TypeSourceInfo*/nullptr, StorageClass::SC_Extern,
       /*isInlineSpecified*/false, /*hasWrittenPrototype*/true);
@@ -561,14 +561,13 @@ BuildCallExpr(ASTContext& Context, Sema& Sema, SourceLocation srcLocation,
     Params.push_back(PVD);
     cnt++;
   }
-  if (cnt > 0)
-    beginTxDecl->setParams(Params);
+  FD->setParams(Params);
 
   DeclRefExpr* declRefExpr = DeclRefExpr::Create(Context,
       NestedNameSpecifierLoc(), /*TemplateKWLoc*/ srcLocation,
-      beginTxDecl,
-      /*refersToEnclosingVarOrCapture*/false, *declNameInfo,
-      functionType, ExprValueKind::VK_RValue);
+      FD,
+      /*refersToEnclosingVarOrCapture*/false, FD->getNameInfo(),
+      FD->getType(), ExprValueKind::VK_RValue);
 
   return Sema.ActOnCallExpr(Sema.getCurScope(), declRefExpr, SourceLocation(),
       Args, SourceLocation());
