@@ -1124,10 +1124,10 @@ bool Parser::ParseParenExprOrCondition(StmtResult *InitStmt,
 
 StmtResult Parser::ParseTransactionAtomicStmt() {
 	assert(Tok.is(tok::kw___transaction_atomic) && "Not a __transaction_atomic stmt!");
-	SourceLocation transactionAtomicLoc = ConsumeToken(); // eat the '__transaction_atomic'
+	SourceLocation TxAtomicLoc = ConsumeToken(); // eat the '__transaction_atomic'
 
 	if ( ! getLangOpts().gnu_tm ) {
-		Diag(transactionAtomicLoc, diag::warn_gnu_tm_disabled);
+		Diag(TxAtomicLoc, diag::warn_gnu_tm_disabled);
     return ParseCompoundStatement();
   }
 
@@ -1141,28 +1141,28 @@ StmtResult Parser::ParseTransactionAtomicStmt() {
   ParseScope transactionScope(this, Scope::DeclScope | Scope::ControlScope, C99orCXX);
 
   StmtResult JmpBufDeclStmt =
-    Actions.BuildTransactionAtomicJmpBufDeclStmt(transactionAtomicLoc);
+    Actions.BuildTransactionAtomicJmpBufDeclStmt(TxAtomicLoc);
 
   StmtResult SetJmpBufStatusDeclStmt =
-    Actions.BuildTransactionAtomicSetJmpDeclStmt(transactionAtomicLoc,
+    Actions.BuildTransactionAtomicSetJmpDeclStmt(TxAtomicLoc,
         JmpBufDeclStmt.get());
 
   StmtResult ExecModeDeclStmt =
-    Actions.BuildTransactionAtomicExecModeDeclStmt(transactionAtomicLoc,
+    Actions.BuildTransactionAtomicExecModeDeclStmt(TxAtomicLoc,
         JmpBufDeclStmt.get(), SetJmpBufStatusDeclStmt.get());
 
   ExprResult condExpr =
-    Actions.BuildTransactionAtomicCondStmt(transactionAtomicLoc,
+    Actions.BuildTransactionAtomicCondStmt(TxAtomicLoc,
         ExecModeDeclStmt.get());
 
   StmtResult termStmt =
-    Actions.ActOnTransactionAtomicTermStmt(transactionAtomicLoc);
+    Actions.ActOnTransactionAtomicTermStmt(TxAtomicLoc);
 
   StmtResult compoundStmt = ParseCompoundStatement();
 
   transactionScope.Exit();
 
-  return Actions.ActOnTransactionAtomicStmt(transactionAtomicLoc, JmpBufDeclStmt.get(),
+  return Actions.ActOnTransactionAtomicStmt(TxAtomicLoc, JmpBufDeclStmt.get(),
       SetJmpBufStatusDeclStmt.get(), ExecModeDeclStmt.get(), condExpr.get(),
       compoundStmt.get(), termStmt.get());
 }

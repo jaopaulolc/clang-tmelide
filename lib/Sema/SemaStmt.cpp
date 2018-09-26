@@ -575,7 +575,7 @@ BuildCallExpr(ASTContext& Context, Sema& Sema, SourceLocation srcLocation,
 }
 
 StmtResult
-Sema::BuildTransactionAtomicJmpBufDeclStmt(SourceLocation txAtomicLoc) {
+Sema::BuildTransactionAtomicJmpBufDeclStmt(SourceLocation TxAtomicLoc) {
 
   Sema& SemaRef = *this;
   ASTContext& Context = SemaRef.getASTContext();
@@ -589,7 +589,7 @@ Sema::BuildTransactionAtomicJmpBufDeclStmt(SourceLocation txAtomicLoc) {
   IdentifierTable& idt = SemaRef.getPreprocessor().getIdentifierTable();
   IdentifierInfo* jmpbufVarIdInfo = &idt.get("__tx_jmp_buf");
   VarDecl* jmpbufVarDecl = VarDecl::Create(Context,
-      SemaRef.CurContext, txAtomicLoc, txAtomicLoc,
+      SemaRef.CurContext, TxAtomicLoc, TxAtomicLoc,
       jmpbufVarIdInfo, jmpbufQualType, nullptr, StorageClass::SC_Auto);
 
   SmallVector<Decl*, 1> Decls;
@@ -597,11 +597,11 @@ Sema::BuildTransactionAtomicJmpBufDeclStmt(SourceLocation txAtomicLoc) {
   DeclGroupRef jmpbufVarDeclGroupRef =
     DeclGroupRef::Create(Context, Decls.data(), Decls.size());
   return new(Context) DeclStmt(jmpbufVarDeclGroupRef,
-      txAtomicLoc, txAtomicLoc);
+      TxAtomicLoc, TxAtomicLoc);
 }
 
 StmtResult
-Sema::BuildTransactionAtomicSetJmpDeclStmt(SourceLocation txAtomicLoc,
+Sema::BuildTransactionAtomicSetJmpDeclStmt(SourceLocation TxAtomicLoc,
     Stmt* jmpbufStmt) {
 
   Sema& SemaRef = *this;
@@ -621,7 +621,7 @@ Sema::BuildTransactionAtomicSetJmpDeclStmt(SourceLocation txAtomicLoc,
   IdentifierTable& idt = SemaRef.getPreprocessor().getIdentifierTable();
   IdentifierInfo* setjmpReturnVarIdInfo = &idt.get("__setjmp_ret");
   VarDecl* setjmpStatusVarDecl = VarDecl::Create(Context,
-      SemaRef.CurContext, txAtomicLoc, txAtomicLoc,
+      SemaRef.CurContext, TxAtomicLoc, TxAtomicLoc,
       setjmpReturnVarIdInfo, Context.IntTy, nullptr, StorageClass::SC_Auto);
 
   FunctionProtoType::ExtProtoInfo nonVariadicProtoInfo;
@@ -635,7 +635,7 @@ Sema::BuildTransactionAtomicSetJmpDeclStmt(SourceLocation txAtomicLoc,
 
   SmallVector<Expr*, 1> Args;
   Expr *jmpbufDeclRef = new (Context) DeclRefExpr(jmpbufVarDecl, false,
-      jmpbufVarDecl->getType(), ExprValueKind::VK_RValue, txAtomicLoc);
+      jmpbufVarDecl->getType(), ExprValueKind::VK_RValue, TxAtomicLoc);
   ImplicitCastExpr* jmpbufICE = ImplicitCastExpr::Create(Context,
       jmpbufPtrQualType, CK_ArrayToPointerDecay, jmpbufDeclRef, nullptr,
       VK_RValue);
@@ -643,7 +643,7 @@ Sema::BuildTransactionAtomicSetJmpDeclStmt(SourceLocation txAtomicLoc,
 
   QualType setjmpQualType =
     Context.getFunctionType(Context.IntTy, ArgTypes, nonVariadicProtoInfo);
-  ExprResult R = BuildCallExpr(Context, SemaRef, txAtomicLoc,
+  ExprResult R = BuildCallExpr(Context, SemaRef, TxAtomicLoc,
       "setjmp", setjmpQualType, Args);
   if (R.isInvalid()) {
     llvm::errs() << "fatal error: failed to build setjmp CallExpr\n";
@@ -661,15 +661,14 @@ Sema::BuildTransactionAtomicSetJmpDeclStmt(SourceLocation txAtomicLoc,
   DeclGroupRef setjmpStatusDeclGroupRef =
     DeclGroupRef::Create(Context, Decls.data(), Decls.size());
   return new(Context) DeclStmt(setjmpStatusDeclGroupRef,
-      txAtomicLoc, txAtomicLoc);
+      TxAtomicLoc, TxAtomicLoc);
 }
 
 StmtResult
-Sema::BuildTransactionAtomicExecModeDeclStmt(SourceLocation transactionAtomicLoc,
+Sema::BuildTransactionAtomicExecModeDeclStmt(SourceLocation TxAtomicLoc,
     Stmt* jmpbufStmt, Stmt* setjmpStmt) {
 
   // Using '__transaction_atomic' loc for all generated nodes
-  SourceLocation txAtomicLoc = transactionAtomicLoc;
   Sema& SemaRef = *this;
 
   if (jmpbufStmt == nullptr) {
@@ -697,20 +696,20 @@ Sema::BuildTransactionAtomicExecModeDeclStmt(SourceLocation transactionAtomicLoc
   // Declares __exec_mode as a auto 'int' variable within function context
   // XXX Not sure yet which is the correct StorageClass for __exec_mode
   VarDecl* execModeVarDecl = VarDecl::Create(Context,
-      SemaRef.CurContext, txAtomicLoc,
-      txAtomicLoc, execModeVarIdInfo, UInt32_t, nullptr, StorageClass::SC_Auto);
+      SemaRef.CurContext, TxAtomicLoc, TxAtomicLoc, execModeVarIdInfo,
+      UInt32_t, nullptr, StorageClass::SC_Auto);
 
   QualType jmpbufPtrQualType =
     Context.getPointerType(jmpbufVarDecl->getType());
 
   Expr *jmpbufDeclRef = new (Context) DeclRefExpr(jmpbufVarDecl, false,
-      jmpbufVarDecl->getType(), ExprValueKind::VK_RValue, txAtomicLoc);
+      jmpbufVarDecl->getType(), ExprValueKind::VK_RValue, TxAtomicLoc);
   UnaryOperator* jmpbufAddrOf = new (Context) UnaryOperator(jmpbufDeclRef,
       UnaryOperatorKind::UO_AddrOf, jmpbufPtrQualType,
-      ExprValueKind::VK_RValue, ExprObjectKind::OK_Ordinary, txAtomicLoc);
+      ExprValueKind::VK_RValue, ExprObjectKind::OK_Ordinary, TxAtomicLoc);
 
   Expr *setjmpDeclRef = new (Context) DeclRefExpr(setjmpVarDecl, false,
-      setjmpVarDecl->getType(), ExprValueKind::VK_RValue, txAtomicLoc);
+      setjmpVarDecl->getType(), ExprValueKind::VK_RValue, TxAtomicLoc);
 
   SmallVector<QualType, 2> ArgTypes;
   ArgTypes.push_back(jmpbufPtrQualType);
@@ -731,7 +730,7 @@ Sema::BuildTransactionAtomicExecModeDeclStmt(SourceLocation transactionAtomicLoc
 
   QualType beginTxQualType =
     Context.getFunctionType(UInt32_t, ArgTypes, nonVariadicProtoInfo);
-  ExprResult R = BuildCallExpr(Context, SemaRef, txAtomicLoc,
+  ExprResult R = BuildCallExpr(Context, SemaRef, TxAtomicLoc,
       "_ITM_beginTransaction", beginTxQualType, Args);
   if (R.isInvalid()) {
     llvm::errs() << "fatal error: failed to build _ITM_beginTransaction\n";
@@ -747,25 +746,24 @@ Sema::BuildTransactionAtomicExecModeDeclStmt(SourceLocation transactionAtomicLoc
   DeclGroupRef execModeDeclGroupRef =
     DeclGroupRef::Create(Context, Decls.data(), Decls.size());
   return new(Context) DeclStmt(execModeDeclGroupRef,
-      transactionAtomicLoc, transactionAtomicLoc);
+      TxAtomicLoc, TxAtomicLoc);
 }
 
 StmtResult
-Sema::ActOnTransactionAtomicTermStmt(SourceLocation transactionAtomicLoc) {
-  return BuildTransactionAtomicTermStmt(transactionAtomicLoc);
+Sema::ActOnTransactionAtomicTermStmt(SourceLocation TxAtomicLoc) {
+  return BuildTransactionAtomicTermStmt(TxAtomicLoc);
 }
 
 StmtResult
-Sema::BuildTransactionAtomicTermStmt(SourceLocation transactionAtomicLoc) {
+Sema::BuildTransactionAtomicTermStmt(SourceLocation TxAtomicLoc) {
 
   // Using '__transaction_atomic' loc for all generated nodes
-  SourceLocation txAtomicLoc = transactionAtomicLoc;
 
   FunctionProtoType::ExtProtoInfo  commitTxProtoInfo;
   commitTxProtoInfo.Variadic = false;
   QualType commitTxQualType =
     Context.getFunctionType(Context.VoidTy, None, commitTxProtoInfo);
-  ExprResult R = BuildCallExpr(Context, *this, txAtomicLoc,
+  ExprResult R = BuildCallExpr(Context, *this, TxAtomicLoc,
       "_ITM_commitTransaction", commitTxQualType, None);
   if (R.isInvalid()) {
     llvm::errs() << "fatal error: failed to build _ITM_commitTransaction\n";
@@ -778,11 +776,11 @@ Sema::BuildTransactionAtomicTermStmt(SourceLocation transactionAtomicLoc) {
   commitStmts.push_back(commitTxCallExpr);
 
   return CompoundStmt::Create(Context, commitStmts,
-      txAtomicLoc, txAtomicLoc);
+      TxAtomicLoc, TxAtomicLoc);
 }
 
 ExprResult
-Sema::BuildTransactionAtomicCondStmt(SourceLocation transactionAtomicLoc,
+Sema::BuildTransactionAtomicCondStmt(SourceLocation TxAtomicLoc,
     Stmt* execModeStmt) {
 
   DeclStmt* VarDecls = static_cast<DeclStmt*>(execModeStmt);
@@ -791,13 +789,13 @@ Sema::BuildTransactionAtomicCondStmt(SourceLocation transactionAtomicLoc,
 
   Expr *lhs, *rhs;
   lhs = new (Context) DeclRefExpr(execModeVarDecl, false,
-      execModeVarDecl->getType(), ExprValueKind::VK_LValue, transactionAtomicLoc);
+      execModeVarDecl->getType(), ExprValueKind::VK_LValue, TxAtomicLoc);
   lhs = ImplicitCastExpr::Create(Context, lhs->getType(), CK_LValueToRValue,
       lhs, nullptr, VK_RValue);
 
   llvm::APInt initAPInt((unsigned)Context.getTypeSize(Context.IntTy), 0x1);
   rhs = IntegerLiteral::Create(Context, initAPInt, Context.IntTy,
-      transactionAtomicLoc);
+      TxAtomicLoc);
   BinaryOperator* execModeAndOp = new (Context) BinaryOperator(lhs, rhs,
       BinaryOperatorKind::BO_EQ, Context.BoolTy, ExprValueKind::VK_LValue,
       ExprObjectKind::OK_Ordinary, transactionAtomicLoc, FPOptions());
@@ -813,10 +811,10 @@ Sema::BuildTransactionAtomicCondStmt(SourceLocation transactionAtomicLoc,
 }
 
 StmtResult
-Sema::ActOnTransactionAtomicStmt(SourceLocation TransactionAtomicLoc,
+Sema::ActOnTransactionAtomicStmt(SourceLocation TxAtomicLoc,
     Stmt* jmpbufStmt, Stmt* setjmpStmt, Stmt* execModeStmt,
     Expr* condExpr, Stmt* compoundStmt, Stmt* termStmt) {
-  return BuildTransactionAtomicStmt(transactionAtomicLoc, jmpbufStmt, setjmpStmt,
+  return BuildTransactionAtomicStmt(TxAtomicLoc, jmpbufStmt, setjmpStmt,
       execModeStmt, condExpr, compoundStmt, termStmt);
 }
 
@@ -932,7 +930,7 @@ public:
 } // end anonymous namespace
 
 StmtResult
-Sema::BuildTransactionAtomicStmt(SourceLocation transactionAtomicLoc, Stmt* jmpbufStmt,
+Sema::BuildTransactionAtomicStmt(SourceLocation TxAtomicLoc, Stmt* jmpbufStmt,
     Stmt* setjmpStmt, Stmt* execModeStmt, Expr* condExpr, Stmt* compoundStmt,
     Stmt* termStmt) {
 
@@ -941,7 +939,6 @@ Sema::BuildTransactionAtomicStmt(SourceLocation transactionAtomicLoc, Stmt* jmpb
       diag::err_unsafe_call_inside_transaction_atomic_block);
 
   // Using '__transaction_atomic' loc for all generated nodes
-  SourceLocation txAtomicLoc = transactionAtomicLoc;
 
   FunctionProtoType::ExtProtoInfo  funcProtoInfo;
   funcProtoInfo.Variadic = false;
@@ -949,18 +946,18 @@ Sema::BuildTransactionAtomicStmt(SourceLocation transactionAtomicLoc, Stmt* jmpb
   QualType funcType =
     Context.getFunctionType(Context.VoidTy, None, funcProtoInfo);
 
-  ExprResult beginSlowResult = BuildCallExpr(Context, SemaRef, txAtomicLoc,
+  ExprResult beginSlowResult = BuildCallExpr(Context, SemaRef, TxAtomicLoc,
       "__begin_tm_slow_path", funcType, None);
-  ExprResult endSlowResult = BuildCallExpr(Context, SemaRef, txAtomicLoc,
+  ExprResult endSlowResult = BuildCallExpr(Context, SemaRef, TxAtomicLoc,
       "__end_tm_slow_path", funcType, None);
   if (beginSlowResult.isInvalid() || endSlowResult.isInvalid()) {
     llvm::errs() << "fatal error: failed to build __{begin, end}_tm_slow_path\n";
     return StmtError();
   }
 
-  ExprResult beginFastResult = BuildCallExpr(Context, SemaRef, txAtomicLoc,
+  ExprResult beginFastResult = BuildCallExpr(Context, SemaRef, TxAtomicLoc,
       "__begin_tm_fast_path", funcType, None);
-  ExprResult endFastResult = BuildCallExpr(Context, SemaRef, txAtomicLoc,
+  ExprResult endFastResult = BuildCallExpr(Context, SemaRef, TxAtomicLoc,
       "__end_tm_fast_path", funcType, None);
   if (beginFastResult.isInvalid() || endFastResult.isInvalid()) {
     llvm::errs() << "fatal error: failed to build __{begin, end}_tm_fast_path\n";
@@ -993,9 +990,9 @@ Sema::BuildTransactionAtomicStmt(SourceLocation transactionAtomicLoc, Stmt* jmpb
   }
 
   CompoundStmt* slowPath = CompoundStmt::Create(Context, slowPathStmts,
-      txAtomicLoc, txAtomicLoc);
+      TxAtomicLoc, TxAtomicLoc);
   CompoundStmt* fastPath = CompoundStmt::Create(Context, fastPathStmts,
-      txAtomicLoc, txAtomicLoc);
+      TxAtomicLoc, TxAtomicLoc);
 
   getCurFunction()->setHasBranchProtectedScope();
 
