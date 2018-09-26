@@ -566,7 +566,7 @@ BuildCallExpr(ASTContext& Context, Sema& Sema, SourceLocation srcLocation,
   DeclRefExpr* declRefExpr = DeclRefExpr::Create(Context,
       NestedNameSpecifierLoc(), /*TemplateKWLoc*/SourceLocation(), FD,
       /*refersToEnclosingVarOrCapture*/false, FD->getNameInfo(),
-      FD->getType(), ExprValueKind::VK_RValue);
+      FD->getType(), VK_RValue);
 
   return Sema.ActOnCallExpr(Sema.getCurScope(), declRefExpr, SourceLocation(),
       Args, SourceLocation());
@@ -633,7 +633,7 @@ Sema::BuildTransactionAtomicSetJmpDeclStmt(SourceLocation TxAtomicLoc,
 
   SmallVector<Expr*, 1> Args;
   Expr *jmpbufDeclRef = new (Context) DeclRefExpr(jmpbufVarDecl, false,
-      jmpbufVarDecl->getType(), ExprValueKind::VK_RValue, TxAtomicLoc);
+      jmpbufVarDecl->getType(), VK_LValue, TxAtomicLoc);
   ImplicitCastExpr* jmpbufICE = ImplicitCastExpr::Create(Context,
       jmpbufPtrQualType, CK_ArrayToPointerDecay, jmpbufDeclRef, nullptr,
       VK_RValue);
@@ -701,13 +701,13 @@ Sema::BuildTransactionAtomicExecModeDeclStmt(SourceLocation TxAtomicLoc,
     Context.getPointerType(jmpbufVarDecl->getType());
 
   Expr *jmpbufDeclRef = new (Context) DeclRefExpr(jmpbufVarDecl, false,
-      jmpbufVarDecl->getType(), ExprValueKind::VK_RValue, TxAtomicLoc);
+      jmpbufVarDecl->getType(), VK_RValue, TxAtomicLoc);
   UnaryOperator* jmpbufAddrOf = new (Context) UnaryOperator(jmpbufDeclRef,
       UnaryOperatorKind::UO_AddrOf, jmpbufPtrQualType,
-      ExprValueKind::VK_RValue, ExprObjectKind::OK_Ordinary, TxAtomicLoc);
+      VK_RValue, OK_Ordinary, TxAtomicLoc);
 
   Expr *setjmpDeclRef = new (Context) DeclRefExpr(setjmpVarDecl, false,
-      setjmpVarDecl->getType(), ExprValueKind::VK_RValue, TxAtomicLoc);
+      setjmpVarDecl->getType(), VK_RValue, TxAtomicLoc);
 
   SmallVector<QualType, 2> ArgTypes;
   ArgTypes.push_back(jmpbufPtrQualType);
@@ -787,7 +787,7 @@ Sema::BuildTransactionAtomicCondStmt(SourceLocation TxAtomicLoc,
 
   Expr *lhs, *rhs;
   lhs = new (Context) DeclRefExpr(execModeVarDecl, false,
-      execModeVarDecl->getType(), ExprValueKind::VK_LValue, TxAtomicLoc);
+      execModeVarDecl->getType(), VK_LValue, TxAtomicLoc);
   lhs = ImplicitCastExpr::Create(Context, lhs->getType(), CK_LValueToRValue,
       lhs, nullptr, VK_RValue);
 
@@ -795,8 +795,8 @@ Sema::BuildTransactionAtomicCondStmt(SourceLocation TxAtomicLoc,
   rhs = IntegerLiteral::Create(Context, initAPInt, Context.IntTy,
       TxAtomicLoc);
   BinaryOperator* execModeAndOp = new (Context) BinaryOperator(lhs, rhs,
-      BinaryOperatorKind::BO_EQ, Context.BoolTy, ExprValueKind::VK_LValue,
-      ExprObjectKind::OK_Ordinary, transactionAtomicLoc, FPOptions());
+      BinaryOperatorKind::BO_EQ, Context.BoolTy, VK_LValue,
+      OK_Ordinary, transactionAtomicLoc, FPOptions());
   //execModeAndOp->dump();
   //ImplicitCastExpr* initVarAssignCastToBool =
   //  new (Context) ImplicitCastExpr(ImplicitCastExpr::OnStack, Context.BoolTy,
