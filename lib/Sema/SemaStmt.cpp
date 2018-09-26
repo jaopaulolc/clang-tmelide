@@ -568,8 +568,8 @@ BuildCallExpr(ASTContext& Context, Sema& Sema, SourceLocation srcLocation,
       /*refersToEnclosingVarOrCapture*/false, FD->getNameInfo(),
       FD->getType(), VK_RValue);
 
-  return Sema.ActOnCallExpr(Sema.getCurScope(), declRefExpr, SourceLocation(),
-      Args, SourceLocation());
+  return Sema.ActOnCallExpr(Sema.getCurScope(), declRefExpr, srcLocation, Args,
+      srcLocation);
 }
 
 StmtResult
