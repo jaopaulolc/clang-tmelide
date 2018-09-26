@@ -789,7 +789,7 @@ Sema::BuildTransactionAtomicCondStmt(SourceLocation TxAtomicLoc,
       TxAtomicLoc);
   return new (Context) BinaryOperator(lhs, rhs,
       BinaryOperatorKind::BO_EQ, Context.BoolTy, VK_RValue,
-      OK_Ordinary, transactionAtomicLoc, FPOptions());
+      OK_Ordinary, TxAtomicLoc, FPOptions());
 }
 
 StmtResult
