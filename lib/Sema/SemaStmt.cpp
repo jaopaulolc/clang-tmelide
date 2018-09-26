@@ -564,8 +564,7 @@ BuildCallExpr(ASTContext& Context, Sema& Sema, SourceLocation srcLocation,
   FD->setParams(Params);
 
   DeclRefExpr* declRefExpr = DeclRefExpr::Create(Context,
-      NestedNameSpecifierLoc(), /*TemplateKWLoc*/SourceLocation(),
-      FD,
+      NestedNameSpecifierLoc(), /*TemplateKWLoc*/SourceLocation(), FD,
       /*refersToEnclosingVarOrCapture*/false, FD->getNameInfo(),
       FD->getType(), ExprValueKind::VK_RValue);
 
