@@ -787,9 +787,8 @@ Sema::BuildTransactionAtomicCondStmt(SourceLocation TxAtomicLoc,
   llvm::APInt initAPInt((unsigned)Context.getTypeSize(Context.IntTy), 0x1);
   rhs = IntegerLiteral::Create(Context, initAPInt, Context.IntTy,
       TxAtomicLoc);
-  return new (Context) BinaryOperator(lhs, rhs,
-      BinaryOperatorKind::BO_EQ, Context.BoolTy, VK_RValue,
-      OK_Ordinary, TxAtomicLoc, FPOptions());
+  return new (Context) BinaryOperator(lhs, rhs, BinaryOperatorKind::BO_EQ,
+      Context.BoolTy, VK_RValue, OK_Ordinary, TxAtomicLoc, FPOptions());
 }
 
 StmtResult
