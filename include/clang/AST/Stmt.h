@@ -979,7 +979,7 @@ public:
   // Iterators over subexpressions.  The iterators will include iterating
   // over the initialization expression referenced by the condition variable.
   child_range children() {
-    return child_range(&SubExprs[0], &SubExprs[0]+TERM);
+    return child_range(&SubExprs[0], &SubExprs[0]+END_EXPR);
   }
 
   static bool classof(const Stmt *T) {
