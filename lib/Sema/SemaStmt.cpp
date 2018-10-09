@@ -885,8 +885,10 @@ public:
             D->getLocStart(), VarDeclIDInfo, OrigVD->getType(),
             OrigVD->getTypeSourceInfo(), OrigVD->getStorageClass());
         TransformedVarDecls[D] = newVD;
-        ExprResult E = getDerived().TransformExpr(OrigVD->getInit());
-        newVD->setInit(E.get());
+        if (OrigVD->hasInit()) {
+          ExprResult E = getDerived().TransformExpr(OrigVD->getInit());
+          newVD->setInit(E.get());
+        }
         Transformed = newVD;
       } else {
         Transformed = getDerived().TransformDefinition(D->getLocation(), D);
