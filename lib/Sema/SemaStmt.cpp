@@ -732,7 +732,8 @@ Sema::BuildTransactionAtomicExecModeDeclStmt(SourceLocation TxAtomicLoc,
 
   // Initialize __exec_mode with return of _ITM_beginTransaction
   CallExpr* beginTxCallExpr = static_cast<CallExpr*>(R.get());
-  execModeVarDecl->setInit(beginTxCallExpr);
+  SemaRef.AddInitializerToDecl(execModeVarDecl, beginTxCallExpr,
+      /*DirectInit*/false);
 
   SmallVector<Decl*, 1> Decls;
   Decls.push_back(execModeVarDecl);
