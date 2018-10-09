@@ -815,13 +815,12 @@ public:
     if (isa<VarDecl>(E->getDecl()) &&
         TransformedVarDecls.count(E->getDecl()) != 0) {
       VarDecl* VD = cast<VarDecl>(TransformedVarDecls[E->getDecl()]);
-      ExprResult R = getDerived().RebuildDeclRefExpr(VD->getQualifierLoc(),
-          VD, E->getNameInfo(), nullptr);
-      if (R.isInvalid()) {
-        llvm::errs() << "fatal error: failed to transform DeclRefExpr\n";
+      Expr *DRE = new (SemaRef.Context) DeclRefExpr(VD, false,
+        VD->getType(), VK_LValue, VD->getLocation());
+      if (DRE == nullptr) {
         return ExprError();
       }
-      return R;
+      return DRE;
     }
     NestedNameSpecifierLoc QualifierLoc;
     if (E->getQualifierLoc()) {
