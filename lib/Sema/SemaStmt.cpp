@@ -877,15 +877,13 @@ public:
     IdentifierTable& idt = SemaRef.getPreprocessor().getIdentifierTable();
     for (auto *D : S->decls()) {
       Decl* Transformed;
-      //FileID DeclFileID = SM.getFileID(D->getLocation());
-      if (isa<VarDecl>(D) /*&& DeclFileID == MainFileID*/) {
+      if (isa<VarDecl>(D)) {
         VarDecl* OrigVD = cast<VarDecl>(D);
         IdentifierInfo* VarDeclIDInfo = &idt.get(("__" + OrigVD->getName()).str());
         VarDecl* newVD = VarDecl::Create(SemaRef.getASTContext(),
             D->getDeclContext(), D->getLocStart(),
             D->getLocStart(), VarDeclIDInfo, OrigVD->getType(),
             OrigVD->getTypeSourceInfo(), OrigVD->getStorageClass());
-        //newVD->dumpColor();
         TransformedVarDecls[D] = newVD;
         ExprResult E = getDerived().TransformExpr(OrigVD->getInit());
         newVD->setInit(E.get());
