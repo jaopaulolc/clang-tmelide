@@ -528,7 +528,7 @@ public:
 static ExprResult
 BuildCallExpr(ASTContext& Context, Sema& Sema, SourceLocation srcLocation,
     StringRef functionName, QualType& functionType,
-    MutableArrayRef<Expr*> Args) {
+    MutableArrayRef<Expr*> Args, AttrVec& Attrs) {
 
   IdentifierTable& idt = Sema.getPreprocessor().getIdentifierTable();
 
@@ -562,6 +562,7 @@ BuildCallExpr(ASTContext& Context, Sema& Sema, SourceLocation srcLocation,
     cnt++;
   }
   FD->setParams(Params);
+  FD->setAttrs(Attrs);
 
   DeclRefExpr* declRefExpr = DeclRefExpr::Create(Context,
       NestedNameSpecifierLoc(), /*TemplateKWLoc*/SourceLocation(), FD,
@@ -639,10 +640,14 @@ Sema::BuildTransactionAtomicSetJmpDeclStmt(SourceLocation TxAtomicLoc,
       VK_RValue);
   Args.push_back(jmpbufICE);
 
+  AttrVec Attrs;
+  Attrs.push_back(ReturnsTwiceAttr::CreateImplicit(Context));
+  Attrs.push_back(NoThrowAttr::CreateImplicit(Context));
+
   QualType setjmpQualType =
     Context.getFunctionType(Context.IntTy, ArgTypes, nonVariadicProtoInfo);
   ExprResult R = BuildCallExpr(Context, SemaRef, TxAtomicLoc,
-      "setjmp", setjmpQualType, Args);
+      "setjmp", setjmpQualType, Args, Attrs);
   if (R.isInvalid()) {
     llvm::errs() << "fatal error: failed to build setjmp CallExpr\n";
     return StmtError();
@@ -721,10 +726,14 @@ Sema::BuildTransactionAtomicExecModeDeclStmt(SourceLocation TxAtomicLoc,
   FunctionProtoType::ExtProtoInfo nonVariadicProtoInfo;
   nonVariadicProtoInfo.Variadic = false;
 
+  AttrVec Attrs;
+  Attrs.push_back(ReturnsTwiceAttr::CreateImplicit(Context));
+  Attrs.push_back(NoThrowAttr::CreateImplicit(Context));
+
   QualType beginTxQualType =
     Context.getFunctionType(UInt32_t, ArgTypes, nonVariadicProtoInfo);
   ExprResult R = BuildCallExpr(Context, SemaRef, TxAtomicLoc,
-      "_ITM_beginTransaction", beginTxQualType, Args);
+      "_ITM_beginTransaction", beginTxQualType, Args, Attrs);
   if (R.isInvalid()) {
     llvm::errs() << "fatal error: failed to build _ITM_beginTransaction\n";
     return StmtError();
@@ -751,13 +760,16 @@ StmtResult
 Sema::BuildTransactionAtomicTermStmt(SourceLocation TxAtomicLoc) {
 
   // Using '__transaction_atomic' loc for all generated nodes
+  AttrVec Attrs;
+  Attrs.push_back(ReturnsTwiceAttr::CreateImplicit(Context));
+  Attrs.push_back(NoThrowAttr::CreateImplicit(Context));
 
   FunctionProtoType::ExtProtoInfo  commitTxProtoInfo;
   commitTxProtoInfo.Variadic = false;
   QualType commitTxQualType =
     Context.getFunctionType(Context.VoidTy, None, commitTxProtoInfo);
   ExprResult R = BuildCallExpr(Context, *this, TxAtomicLoc,
-      "_ITM_commitTransaction", commitTxQualType, None);
+      "_ITM_commitTransaction", commitTxQualType, None, Attrs);
   if (R.isInvalid()) {
     llvm::errs() << "fatal error: failed to build _ITM_commitTransaction\n";
     return StmtError();
@@ -927,19 +939,21 @@ Sema::BuildTransactionAtomicStmt(SourceLocation TxAtomicLoc, Stmt* jmpbufStmt,
   QualType funcType =
     Context.getFunctionType(Context.VoidTy, None, funcProtoInfo);
 
+  AttrVec Attrs;
+
   ExprResult beginSlowResult = BuildCallExpr(Context, SemaRef, TxAtomicLoc,
-      "__begin_tm_slow_path", funcType, None);
+      "__begin_tm_slow_path", funcType, None, Attrs);
   ExprResult endSlowResult = BuildCallExpr(Context, SemaRef, TxAtomicLoc,
-      "__end_tm_slow_path", funcType, None);
+      "__end_tm_slow_path", funcType, None, Attrs);
   if (beginSlowResult.isInvalid() || endSlowResult.isInvalid()) {
     llvm::errs() << "fatal error: failed to build __{begin, end}_tm_slow_path\n";
     return StmtError();
   }
 
   ExprResult beginFastResult = BuildCallExpr(Context, SemaRef, TxAtomicLoc,
-      "__begin_tm_fast_path", funcType, None);
+      "__begin_tm_fast_path", funcType, None, Attrs);
   ExprResult endFastResult = BuildCallExpr(Context, SemaRef, TxAtomicLoc,
-      "__end_tm_fast_path", funcType, None);
+      "__end_tm_fast_path", funcType, None, Attrs);
   if (beginFastResult.isInvalid() || endFastResult.isInvalid()) {
     llvm::errs() << "fatal error: failed to build __{begin, end}_tm_fast_path\n";
     return StmtError();
