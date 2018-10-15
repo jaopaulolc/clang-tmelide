@@ -4168,6 +4168,21 @@ RValue CodeGenFunction::EmitCall(const CGFunctionInfo &CallInfo,
                            llvm::Attribute::AlwaysInline);
   }
 
+  // GNU TM Extension
+  const Decl* CalleeDecl = Callee.getAbstractInfo().getCalleeDecl();
+  if (CalleeDecl && CalleeDecl->hasAttr<TransactionPureAttr>()) {
+    Attrs =
+      Attrs.addAttribute(getLLVMContext(),
+          llvm::AttributeList::FunctionIndex,
+          llvm::Attribute::TransactionPure);
+  }
+  if (CalleeDecl && CalleeDecl->hasAttr<TransactionSafeAttr>()) {
+    Attrs =
+      Attrs.addAttribute(getLLVMContext(),
+          llvm::AttributeList::FunctionIndex,
+          llvm::Attribute::TransactionSafe);
+  }
+
   // Disable inlining inside SEH __try blocks.
   if (isSEHTryScope()) {
     Attrs =
