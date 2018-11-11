@@ -1137,9 +1137,6 @@ StmtResult Parser::ParseTransactionAtomicStmt() {
 		return StmtError();
 	}
 
-  bool C99orCXX = getLangOpts().C99 || getLangOpts().CPlusPlus;
-  ParseScope transactionScope(this, Scope::DeclScope | Scope::ControlScope, C99orCXX);
-
   StmtResult JmpBufDeclStmt =
     Actions.BuildTransactionAtomicJmpBufDeclStmt(TxAtomicLoc);
 
@@ -1160,7 +1157,6 @@ StmtResult Parser::ParseTransactionAtomicStmt() {
 
   StmtResult compoundStmt = ParseCompoundStatement();
 
-  transactionScope.Exit();
 
   return Actions.ActOnTransactionAtomicStmt(TxAtomicLoc, JmpBufDeclStmt.get(),
       SetJmpBufStatusDeclStmt.get(), ExecModeDeclStmt.get(), condExpr.get(),
