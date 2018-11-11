@@ -590,6 +590,7 @@ Sema::BuildTransactionAtomicJmpBufDeclStmt(SourceLocation TxAtomicLoc) {
   VarDecl* jmpbufVarDecl = VarDecl::Create(Context,
       SemaRef.CurContext, TxAtomicLoc, TxAtomicLoc,
       jmpbufVarIdInfo, jmpbufQualType, nullptr, StorageClass::SC_None);
+  SemaRef.CurContext->addDeclInternal(jmpbufVarDecl);
 
   SmallVector<Decl*, 1> Decls;
   Decls.push_back(jmpbufVarDecl);
@@ -622,6 +623,7 @@ Sema::BuildTransactionAtomicSetJmpDeclStmt(SourceLocation TxAtomicLoc,
   VarDecl* setjmpStatusVarDecl = VarDecl::Create(Context,
       SemaRef.CurContext, TxAtomicLoc, TxAtomicLoc,
       setjmpReturnVarIdInfo, Context.IntTy, nullptr, StorageClass::SC_None);
+  SemaRef.CurContext->addDeclInternal(setjmpStatusVarDecl);
 
   FunctionProtoType::ExtProtoInfo nonVariadicProtoInfo;
   nonVariadicProtoInfo.Variadic = false;
@@ -699,6 +701,7 @@ Sema::BuildTransactionAtomicExecModeDeclStmt(SourceLocation TxAtomicLoc,
   VarDecl* execModeVarDecl = VarDecl::Create(Context,
       SemaRef.CurContext, TxAtomicLoc, TxAtomicLoc, execModeVarIdInfo,
       UInt32_t, nullptr, StorageClass::SC_None);
+  SemaRef.CurContext->addDeclInternal(execModeVarDecl);
 
   QualType jmpbufPtrQualType =
     Context.getPointerType(jmpbufVarDecl->getType());
@@ -902,6 +905,7 @@ public:
           newVD->setInit(E.get());
         }
         Transformed = newVD;
+        SemaRef.CurContext->addDeclInternal(newVD);
       } else {
         Transformed = getDerived().TransformDefinition(D->getLocation(), D);
       }
