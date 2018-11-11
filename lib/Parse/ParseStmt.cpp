@@ -1155,8 +1155,7 @@ StmtResult Parser::ParseTransactionAtomicStmt() {
   StmtResult termStmt =
     Actions.ActOnTransactionAtomicTermStmt(TxAtomicLoc);
 
-  StmtResult compoundStmt = ParseCompoundStatement();
-
+  StmtResult compoundStmt = ParseStatement();
 
   return Actions.ActOnTransactionAtomicStmt(TxAtomicLoc, JmpBufDeclStmt.get(),
       SetJmpBufStatusDeclStmt.get(), ExecModeDeclStmt.get(), condExpr.get(),
