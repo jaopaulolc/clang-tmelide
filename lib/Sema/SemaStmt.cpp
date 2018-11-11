@@ -829,61 +829,16 @@ public:
   ExprResult TransformDeclRefExpr(DeclRefExpr *E) {
     if (isa<VarDecl>(E->getDecl()) &&
         TransformedVarDecls.count(E->getDecl()) != 0) {
-      VarDecl* VD = cast<VarDecl>(TransformedVarDecls[E->getDecl()]);
-      Expr *DRE = new (SemaRef.Context) DeclRefExpr(VD, false,
-        VD->getType(), VK_LValue, VD->getLocation());
-      if (DRE == nullptr) {
-        return ExprError();
-      }
-      return DRE;
-    }
-    NestedNameSpecifierLoc QualifierLoc;
-    if (E->getQualifierLoc()) {
-      QualifierLoc
-        = getDerived().TransformNestedNameSpecifierLoc(E->getQualifierLoc());
-      if (!QualifierLoc)
-        return ExprError();
-    }
-
-    ValueDecl *ND
-      = cast_or_null<ValueDecl>(getDerived().TransformDecl(E->getLocation(),
-                                                           E->getDecl()));
-    if (!ND)
-      return ExprError();
-
-    DeclarationNameInfo NameInfo = E->getNameInfo();
-    if (NameInfo.getName()) {
-      NameInfo = getDerived().TransformDeclarationNameInfo(NameInfo);
-      if (!NameInfo.getName())
-        return ExprError();
-    }
-
-    if (!getDerived().AlwaysRebuild() &&
-        QualifierLoc == E->getQualifierLoc() &&
-        ND == E->getDecl() &&
-        NameInfo.getName() == E->getDecl()->getDeclName() &&
-        !E->hasExplicitTemplateArgs()) {
-
-      // Mark it referenced in the new context regardless.
-      // FIXME: this is a bit instantiation-specific.
-      SemaRef.MarkDeclRefReferenced(E);
-
-      return E;
-    }
-
-    TemplateArgumentListInfo TransArgs, *TemplateArgs = nullptr;
-    if (E->hasExplicitTemplateArgs()) {
-      TemplateArgs = &TransArgs;
-      TransArgs.setLAngleLoc(E->getLAngleLoc());
-      TransArgs.setRAngleLoc(E->getRAngleLoc());
-      if (getDerived().TransformTemplateArguments(E->getTemplateArgs(),
-                                                  E->getNumTemplateArgs(),
-                                                  TransArgs))
-        return ExprError();
-    }
-
-    return getDerived().RebuildDeclRefExpr(QualifierLoc, ND, NameInfo,
+      VarDecl* ND = cast<VarDecl>(TransformedVarDecls[E->getDecl()]);
+      DeclarationNameInfo NameInfo(DeclarationName(ND->getIdentifier()),
+          ND->getLocStart());
+      // TODO: Properly handle CXX code
+      NestedNameSpecifierLoc QualifierLoc;
+      TemplateArgumentListInfo *TemplateArgs = nullptr;
+      return getDerived().RebuildDeclRefExpr(QualifierLoc, ND, NameInfo,
                                            TemplateArgs);
+    }
+    return BaseTransform::TransformDeclRefExpr(E);
   }
   StmtResult TransformDeclStmt(DeclStmt *S) {
     bool DeclChanged = false;
