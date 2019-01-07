@@ -5055,7 +5055,7 @@ def warn_unused_label : Warning<"unused label %0">,
 def err_goto_into_protected_scope : Error<
   "cannot jump from this goto statement to its label">;
 def err_external_goto_target_inside_transaction : Error<
-  "cannot jump into __transactional_atomic block from outter scope">;
+  "cannot jump into __transaction_atomic block from outter scope">;
 def err_unsafe_call_inside_transaction_atomic_block : Error<
   "unsafe call inside __transaction_atomic block">;
 def err_unsafe_call_inside_transaction_pure : Error<
