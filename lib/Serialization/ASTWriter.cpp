@@ -558,6 +558,12 @@ ASTTypeWriter::VisitAtomicType(const AtomicType *T) {
 }
 
 void
+ASTTypeWriter::VisitTMVarType(const TMVarType *T) {
+  Record.AddTypeRef(T->getValueType());
+  Code = TYPE_TMVAR;
+}
+
+void
 ASTTypeWriter::VisitPipeType(const PipeType *T) {
   Record.AddTypeRef(T->getElementType());
   Record.push_back(T->isReadOnly());
@@ -852,6 +858,12 @@ void TypeLocWriter::VisitObjCObjectPointerTypeLoc(ObjCObjectPointerTypeLoc TL) {
 }
 
 void TypeLocWriter::VisitAtomicTypeLoc(AtomicTypeLoc TL) {
+  Record.AddSourceLocation(TL.getKWLoc());
+  Record.AddSourceLocation(TL.getLParenLoc());
+  Record.AddSourceLocation(TL.getRParenLoc());
+}
+
+void TypeLocWriter::VisitTMVarTypeLoc(TMVarTypeLoc TL) {
   Record.AddSourceLocation(TL.getKWLoc());
   Record.AddSourceLocation(TL.getLParenLoc());
   Record.AddSourceLocation(TL.getRParenLoc());

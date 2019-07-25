@@ -1389,6 +1389,16 @@ DeduceTemplateArgumentsByTypeMatch(Sema &S,
 
       return Sema::TDK_NonDeducedMismatch;
 
+    //     __TMVar T   [extension]
+    case Type::TMVar:
+      if (const TMVarType *TMVarArg = Arg->getAs<TMVarType>())
+        return DeduceTemplateArgumentsByTypeMatch(S, TemplateParams,
+                                       cast<TMVarType>(Param)->getValueType(),
+                                       TMVarArg->getValueType(),
+                                       Info, Deduced, TDF);
+
+      return Sema::TDK_NonDeducedMismatch;
+
     //     T *
     case Type::Pointer: {
       QualType PointeeType;
@@ -5258,6 +5268,13 @@ MarkUsedTemplateParameters(ASTContext &Ctx, QualType T,
     if (!OnlyDeduced)
       MarkUsedTemplateParameters(Ctx,
                                  cast<AtomicType>(T)->getValueType(),
+                                 OnlyDeduced, Depth, Used);
+    break;
+
+  case Type::TMVar:
+    if (!OnlyDeduced)
+      MarkUsedTemplateParameters(Ctx,
+                                 cast<TMVarType>(T)->getValueType(),
                                  OnlyDeduced, Depth, Used);
     break;
 

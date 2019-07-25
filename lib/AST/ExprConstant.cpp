@@ -1519,6 +1519,8 @@ static bool EvaluateFloat(const Expr *E, APFloat &Result, EvalInfo &Info);
 static bool EvaluateComplex(const Expr *E, ComplexValue &Res, EvalInfo &Info);
 static bool EvaluateAtomic(const Expr *E, const LValue *This, APValue &Result,
                            EvalInfo &Info);
+static bool EvaluateTMVar(const Expr *E, const LValue *This, APValue &Result,
+                           EvalInfo &Info);
 static bool EvaluateAsRValue(EvalInfo &Info, const Expr *E, APValue &Result);
 
 //===----------------------------------------------------------------------===//
@@ -4860,6 +4862,16 @@ public:
       return DerivedSuccess(AtomicVal, E);
     }
 
+    case CK_TMVarToNonTMVar: {
+      APValue TMVarVal;
+      // This does not need to be done in place even for class/array types:
+      // tmvar-to-non-tmvar conversion implies copying the object
+      // representation.
+      if (!Evaluate(TMVarVal, Info, E->getSubExpr()))
+        return false;
+      return DerivedSuccess(TMVarVal, E);
+    }
+
     case CK_NoOp:
     case CK_UserDefinedConversion:
       return StmtVisitorTy::Visit(E->getSubExpr());
@@ -7278,6 +7290,7 @@ static int EvaluateBuiltinClassifyType(const CallExpr *E,
   case Type::ObjCObjectPointer:
   case Type::Pipe:
   case Type::Atomic:
+  case Type::TMVar:
     llvm_unreachable("CallExpr::isBuiltinClassifyType(): unimplemented type");
   }
 
@@ -8945,6 +8958,7 @@ bool IntExprEvaluator::VisitCastExpr(const CastExpr *E) {
   case CK_ZeroToOCLEvent:
   case CK_ZeroToOCLQueue:
   case CK_NonAtomicToAtomic:
+  case CK_NonTMVarToTMVar:
   case CK_AddressSpaceConversion:
   case CK_IntToOCLSampler:
     llvm_unreachable("invalid cast kind for integral value");
@@ -8962,6 +8976,7 @@ bool IntExprEvaluator::VisitCastExpr(const CastExpr *E) {
   case CK_UserDefinedConversion:
   case CK_LValueToRValue:
   case CK_AtomicToNonAtomic:
+  case CK_TMVarToNonTMVar:
   case CK_NoOp:
     return ExprEvaluatorBaseTy::VisitCastExpr(E);
 
@@ -9443,12 +9458,14 @@ bool ComplexExprEvaluator::VisitCastExpr(const CastExpr *E) {
   case CK_ZeroToOCLEvent:
   case CK_ZeroToOCLQueue:
   case CK_NonAtomicToAtomic:
+  case CK_NonTMVarToTMVar:
   case CK_AddressSpaceConversion:
   case CK_IntToOCLSampler:
     llvm_unreachable("invalid cast kind for complex value");
 
   case CK_LValueToRValue:
   case CK_AtomicToNonAtomic:
+  case CK_TMVarToNonTMVar:
   case CK_NoOp:
     return ExprEvaluatorBaseTy::VisitCastExpr(E);
 
@@ -9857,6 +9874,50 @@ static bool EvaluateAtomic(const Expr *E, const LValue *This, APValue &Result,
 }
 
 //===----------------------------------------------------------------------===//
+// TMVar expression evaluation, the same as for Atomic
+//===----------------------------------------------------------------------===//
+namespace {
+class TMVarExprEvaluator :
+    public ExprEvaluatorBase<TMVarExprEvaluator> {
+  const LValue *This;
+  APValue &Result;
+public:
+  TMVarExprEvaluator(EvalInfo &Info, const LValue *This, APValue &Result)
+      : ExprEvaluatorBaseTy(Info), This(This), Result(Result) {}
+
+  bool Success(const APValue &V, const Expr *E) {
+    Result = V;
+    return true;
+  }
+
+  bool ZeroInitialization(const Expr *E) {
+    ImplicitValueInitExpr VIE(
+        E->getType()->castAs<TMVarType>()->getValueType());
+    // For tmvar-qualified class (and array) types in C++, initialize the
+    // __TMVar-wrapped subobject directly, in-place.
+    return This ? EvaluateInPlace(Result, Info, *This, &VIE)
+                : Evaluate(Result, Info, &VIE);
+  }
+
+  bool VisitCastExpr(const CastExpr *E) {
+    switch (E->getCastKind()) {
+    default:
+      return ExprEvaluatorBaseTy::VisitCastExpr(E);
+    case CK_NonTMVarToTMVar:
+      return This ? EvaluateInPlace(Result, Info, *This, E->getSubExpr())
+                  : Evaluate(Result, Info, E->getSubExpr());
+    }
+  }
+};
+} // end anonymous namespace
+
+static bool EvaluateTMVar(const Expr *E, const LValue *This, APValue &Result,
+                           EvalInfo &Info) {
+  assert(E->isRValue() && E->getType()->isTMVarType());
+  return TMVarExprEvaluator(Info, This, Result).Visit(E);
+}
+
+//===----------------------------------------------------------------------===//
 // Void expression evaluation, primarily for a cast to void on the LHS of a
 // comma operator
 //===----------------------------------------------------------------------===//
@@ -9971,6 +10032,18 @@ static bool Evaluate(APValue &Result, EvalInfo &Info, const Expr *E) {
       if (!EvaluateAtomic(E, nullptr, Result, Info))
         return false;
     }
+  } else if (T->isTMVarType()) {
+    QualType Unqual = T.getTMVarUnqualifiedType();
+    if (Unqual->isArrayType() || Unqual->isRecordType()) {
+      LValue LV;
+      LV.set(E, Info.CurrentCall->Index);
+      APValue &Value = Info.CurrentCall->createTemporary(E, false);
+      if (!EvaluateTMVar(E, &LV, Value, Info))
+        return false;
+    } else {
+      if (!EvaluateTMVar(E, nullptr, Result, Info))
+        return false;
+    }
   } else if (Info.getLangOpts().CPlusPlus11) {
     Info.FFDiag(E, diag::note_constexpr_nonliteral) << E->getType();
     return false;
@@ -10004,6 +10077,10 @@ static bool EvaluateInPlace(APValue &Result, EvalInfo &Info, const LValue &This,
       QualType Unqual = T.getAtomicUnqualifiedType();
       if (Unqual->isArrayType() || Unqual->isRecordType())
         return EvaluateAtomic(E, &This, Result, Info);
+    } else if (T->isTMVarType()) {
+      QualType Unqual = T.getTMVarUnqualifiedType();
+      if (Unqual->isArrayType() || Unqual->isRecordType())
+        return EvaluateTMVar(E, &This, Result, Info);
     }
   }
 
@@ -10581,6 +10658,8 @@ static ICEDiag CheckICE(const Expr* E, const ASTContext &Ctx) {
     case CK_LValueToRValue:
     case CK_AtomicToNonAtomic:
     case CK_NonAtomicToAtomic:
+    case CK_TMVarToNonTMVar:
+    case CK_NonTMVarToTMVar:
     case CK_NoOp:
     case CK_IntegralToBoolean:
     case CK_IntegralCast:

@@ -1070,7 +1070,10 @@ namespace serialization {
       TYPE_DEPENDENT_SIZED_EXT_VECTOR = 46,
 
       /// \brief A DependentAddressSpaceType record.
-      TYPE_DEPENDENT_ADDRESS_SPACE = 47
+      TYPE_DEPENDENT_ADDRESS_SPACE = 47,
+
+      /// \brief A TMVarType record.
+      TYPE_TMVAR = 48
     };
 
     /// \brief The type IDs for special types constructed by semantic

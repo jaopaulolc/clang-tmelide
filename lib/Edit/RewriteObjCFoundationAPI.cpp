@@ -1037,6 +1037,7 @@ static bool rewriteToNumericBoxedExpression(const ObjCMessageExpr *Msg,
     case CK_IntegralComplexToReal:
     case CK_IntegralComplexToBoolean:
     case CK_AtomicToNonAtomic:
+    case CK_TMVarToNonTMVar:
     case CK_AddressSpaceConversion:
       needsCast = true;
       break;
@@ -1077,6 +1078,7 @@ static bool rewriteToNumericBoxedExpression(const ObjCMessageExpr *Msg,
     case CK_ARCReclaimReturnedObject:
     case CK_ARCExtendBlockObject:
     case CK_NonAtomicToAtomic:
+    case CK_NonTMVarToTMVar:
     case CK_CopyAndAutoreleaseBlockObject:
     case CK_BuiltinFnToFnPtr:
     case CK_ZeroToOCLEvent:

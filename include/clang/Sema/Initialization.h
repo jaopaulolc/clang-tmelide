@@ -776,7 +776,9 @@ public:
     /// \brief Initialize queue_t from 0.
     SK_OCLZeroQueue,
     /// \brief Passing zero to a function where OpenCL event_t is expected.
-    SK_OCLZeroEvent
+    SK_OCLZeroEvent,
+    /// \brief Perform a conversion adding __TMVar to a type.
+    SK_TMVarConversion
   };
   
   /// \brief A single step in the initialization sequence.
@@ -1106,6 +1108,10 @@ public:
   /// \brief Add a new step that performs conversion from non-atomic to atomic
   /// type.
   void AddAtomicConversionStep(QualType Ty);
+
+  /// \brief Add a new step that performs conversion from non-tmvar to tmvar
+  /// type.
+  void AddTMVarConversionStep(QualType Ty);
 
   /// \brief Add a new step that performs a load of the given type.
   ///

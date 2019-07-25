@@ -1157,6 +1157,9 @@ public:
   /// Remove all qualifiers including _Atomic.
   QualType getAtomicUnqualifiedType() const;
 
+  /// Remove all qualifiers including __TMVar.
+  QualType getTMVarUnqualifiedType() const;
+
 private:
   // These methods are implemented in a separate translation unit;
   // "static"-ize them to avoid creating temporary QualTypes in the
@@ -1814,6 +1817,7 @@ public:
   bool isAlignValT() const;                     // C++17 std::align_val_t
   bool isStdByteType() const;                   // C++17 std::byte
   bool isAtomicType() const;                    // C11 _Atomic()
+  bool isTMVarType() const;                     // transactional variable
 
 #define IMAGE_TYPE(ImgType, Id, SingletonId, Access, Suffix) \
   bool is##Id##Type() const;
@@ -5644,6 +5648,38 @@ public:
   }
 };
 
+class TMVarType : public Type, public llvm::FoldingSetNode {
+  friend class ASTContext; // ASTContext creates these.
+
+  QualType ValueType;
+
+  TMVarType(QualType ValTy, QualType Canonical)
+      : Type(TMVar, Canonical, ValTy->isDependentType(),
+             ValTy->isInstantiationDependentType(),
+             ValTy->isVariablyModifiedType(),
+             ValTy->containsUnexpandedParameterPack()),
+        ValueType(ValTy) {}
+
+public:
+  /// Gets the type contained by this tmvar type.
+  QualType getValueType() const { return ValueType; }
+
+  bool isSugared() const { return false; }
+  QualType desugar() const { return QualType(this, 0); }
+
+  void Profile(llvm::FoldingSetNodeID &ID) {
+    Profile(ID, getValueType());
+  }
+
+  static void Profile(llvm::FoldingSetNodeID &ID, QualType T) {
+    ID.AddPointer(T.getAsOpaquePtr());
+  }
+
+  static bool classof(const Type *T) {
+    return T->getTypeClass() == TMVar;
+  }
+};
+
 /// PipeType - OpenCL20.
 class PipeType : public Type, public llvm::FoldingSetNode {
   friend class ASTContext; // ASTContext creates these.
@@ -6051,6 +6087,10 @@ inline bool Type::isObjCObjectOrInterfaceType() const {
 
 inline bool Type::isAtomicType() const {
   return isa<AtomicType>(CanonicalType);
+}
+
+inline bool Type::isTMVarType() const {
+  return isa<TMVarType>(CanonicalType);
 }
 
 inline bool Type::isObjCQualifiedIdType() const {

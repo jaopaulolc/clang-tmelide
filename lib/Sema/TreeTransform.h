@@ -1124,6 +1124,12 @@ public:
   /// Subclasses may override this routine to provide different behavior.
   QualType RebuildAtomicType(QualType ValueType, SourceLocation KWLoc);
 
+  /// \brief Build a new TMVar type given its value type.
+  ///
+  /// By default, performs semantic analysis when building the TMVar type.
+  /// Subclasses may override this routine to provide different behavior.
+  QualType RebuildTMVarType(QualType ValueType, SourceLocation KWLoc);
+
   /// \brief Build a new pipe type given its value type.
   QualType RebuildPipeType(QualType ValueType, SourceLocation KWLoc,
                            bool isReadPipe);
@@ -5749,6 +5755,29 @@ QualType TreeTransform<Derived>::TransformAtomicType(TypeLocBuilder &TLB,
   }
 
   AtomicTypeLoc NewTL = TLB.push<AtomicTypeLoc>(Result);
+  NewTL.setKWLoc(TL.getKWLoc());
+  NewTL.setLParenLoc(TL.getLParenLoc());
+  NewTL.setRParenLoc(TL.getRParenLoc());
+
+  return Result;
+}
+
+template<typename Derived>
+QualType TreeTransform<Derived>::TransformTMVarType(TypeLocBuilder &TLB,
+                                                     TMVarTypeLoc TL) {
+  QualType ValueType = getDerived().TransformType(TLB, TL.getValueLoc());
+  if (ValueType.isNull())
+    return QualType();
+
+  QualType Result = TL.getType();
+  if (getDerived().AlwaysRebuild() ||
+      ValueType != TL.getValueLoc().getType()) {
+    Result = getDerived().RebuildTMVarType(ValueType, TL.getKWLoc());
+    if (Result.isNull())
+      return QualType();
+  }
+
+  TMVarTypeLoc NewTL = TLB.push<TMVarTypeLoc>(Result);
   NewTL.setKWLoc(TL.getKWLoc());
   NewTL.setLParenLoc(TL.getLParenLoc());
   NewTL.setRParenLoc(TL.getRParenLoc());
@@ -12516,6 +12545,12 @@ template<typename Derived>
 QualType TreeTransform<Derived>::RebuildAtomicType(QualType ValueType,
                                                    SourceLocation KWLoc) {
   return SemaRef.BuildAtomicType(ValueType, KWLoc);
+}
+
+template<typename Derived>
+QualType TreeTransform<Derived>::RebuildTMVarType(QualType ValueType,
+                                                  SourceLocation KWLoc) {
+  return SemaRef.BuildTMVarType(ValueType, KWLoc);
 }
 
 template<typename Derived>

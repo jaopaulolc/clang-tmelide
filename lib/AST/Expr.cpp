@@ -1617,6 +1617,8 @@ bool CastExpr::CastConsistency() const {
   case CK_NoOp:
   case CK_AtomicToNonAtomic:
   case CK_NonAtomicToAtomic:
+  case CK_TMVarToNonTMVar:
+  case CK_NonTMVarToTMVar:
   case CK_PointerToBoolean:
   case CK_IntegralToBoolean:
   case CK_FloatingToBoolean:
@@ -2888,6 +2890,8 @@ bool Expr::isConstantInitializer(ASTContext &Ctx, bool IsForRef,
         CE->getCastKind() == CK_ConstructorConversion ||
         CE->getCastKind() == CK_NonAtomicToAtomic ||
         CE->getCastKind() == CK_AtomicToNonAtomic ||
+        CE->getCastKind() == CK_NonTMVarToTMVar ||
+        CE->getCastKind() == CK_TMVarToNonTMVar ||
         CE->getCastKind() == CK_IntToOCLSampler)
       return CE->getSubExpr()->isConstantInitializer(Ctx, false, Culprit);
 

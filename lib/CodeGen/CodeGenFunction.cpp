@@ -254,6 +254,9 @@ TypeEvaluationKind CodeGenFunction::getEvaluationKind(QualType type) {
     case Type::Atomic:
       type = cast<AtomicType>(type)->getValueType();
       continue;
+    case Type::TMVar:
+      type = cast<TMVarType>(type)->getValueType();
+      continue;
     }
     llvm_unreachable("unknown type kind!");
   }
@@ -2095,6 +2098,10 @@ void CodeGenFunction::EmitVariablyModifiedType(QualType type) {
 
     case Type::Atomic:
       type = cast<AtomicType>(ty)->getValueType();
+      break;
+
+    case Type::TMVar:
+      type = cast<TMVarType>(ty)->getValueType();
       break;
 
     case Type::Pipe:

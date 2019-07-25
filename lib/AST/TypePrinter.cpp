@@ -199,6 +199,7 @@ bool TypePrinter::canPrefixQualifiers(const Type *T,
     case Type::ObjCTypeParam:
     case Type::ObjCInterface:
     case Type::Atomic:
+    case Type::TMVar:
     case Type::Pipe:
       CanPrefixQualifiers = true;
       break;
@@ -948,6 +949,16 @@ void TypePrinter::printAtomicBefore(const AtomicType *T, raw_ostream &OS) {
   spaceBeforePlaceHolder(OS);
 }
 void TypePrinter::printAtomicAfter(const AtomicType *T, raw_ostream &OS) { }
+
+void TypePrinter::printTMVarBefore(const TMVarType *T, raw_ostream &OS) {
+  IncludeStrongLifetimeRAII Strong(Policy);
+
+  OS << "__TMVar(";
+  print(T->getValueType(), OS, StringRef());
+  OS << ')';
+  spaceBeforePlaceHolder(OS);
+}
+void TypePrinter::printTMVarAfter(const TMVarType *T, raw_ostream &OS) { }
 
 void TypePrinter::printPipeBefore(const PipeType *T, raw_ostream &OS) {
   IncludeStrongLifetimeRAII Strong(Policy);

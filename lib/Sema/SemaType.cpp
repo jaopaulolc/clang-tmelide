@@ -736,7 +736,8 @@ static void diagnoseAndRemoveTypeQualifiers(Sema &S, const DeclSpec &DS,
   for (QualLoc Qual : {QualLoc(DeclSpec::TQ_const, DS.getConstSpecLoc()),
                        QualLoc(DeclSpec::TQ_restrict, DS.getRestrictSpecLoc()),
                        QualLoc(DeclSpec::TQ_volatile, DS.getVolatileSpecLoc()),
-                       QualLoc(DeclSpec::TQ_atomic, DS.getAtomicSpecLoc())}) {
+                       QualLoc(DeclSpec::TQ_atomic, DS.getAtomicSpecLoc()),
+                       QualLoc(DeclSpec::TQ_tmvar, DS.getTMVarSpecLoc())}) {
     if (!(RemoveTQs & Qual.first))
       continue;
 
@@ -1527,6 +1528,15 @@ static QualType ConvertDeclSpecToType(TypeProcessingState &state) {
       declarator.setInvalidType(true);
     }
     break;
+  case DeclSpec::TST_tmvar:
+    Result = S.GetTypeFromParser(DS.getRepAsType());
+    assert(!Result.isNull() && "Didn't get a type for __TMVar?");
+    Result = S.BuildTMVarType(Result, DS.getTypeSpecTypeLoc());
+    if (Result.isNull()) {
+      Result = Context.IntTy;
+      declarator.setInvalidType(true);
+    }
+    break;
 
 #define GENERIC_IMAGE_TYPE(ImgType, Id) \
   case DeclSpec::TST_##ImgType##_t: \
@@ -1614,7 +1624,8 @@ static QualType ConvertDeclSpecToType(TypeProcessingState &state) {
     if (TypeQuals && Result->isReferenceType()) {
       diagnoseAndRemoveTypeQualifiers(
           S, DS, TypeQuals, Result,
-          DeclSpec::TQ_const | DeclSpec::TQ_volatile | DeclSpec::TQ_atomic,
+          DeclSpec::TQ_const | DeclSpec::TQ_volatile | DeclSpec::TQ_atomic
+          | DeclSpec::TQ_tmvar,
           diag::warn_typecheck_reference_qualifiers);
     }
 
@@ -1712,11 +1723,13 @@ QualType Sema::BuildQualifiedType(QualType T, SourceLocation Loc,
   // Ignore any attempt to form a cv-qualified reference.
   if (T->isReferenceType())
     CVRAU &=
-        ~(DeclSpec::TQ_const | DeclSpec::TQ_volatile | DeclSpec::TQ_atomic);
+        ~(DeclSpec::TQ_const | DeclSpec::TQ_volatile | DeclSpec::TQ_atomic
+            | DeclSpec::TQ_tmvar);
 
-  // Convert from DeclSpec::TQ to Qualifiers::TQ by just dropping TQ_atomic and
-  // TQ_unaligned;
-  unsigned CVR = CVRAU & ~(DeclSpec::TQ_atomic | DeclSpec::TQ_unaligned);
+  // Convert from DeclSpec::TQ to Qualifiers::TQ by just dropping TQ_atomic,
+  // TQ_unaligned and TQ_tmvar;
+  unsigned CVR = CVRAU & ~(DeclSpec::TQ_atomic | DeclSpec::TQ_unaligned |
+      DeclSpec::TQ_tmvar);
 
   // C11 6.7.3/5:
   //   If the same qualifier appears more than once in the same
@@ -1737,6 +1750,16 @@ QualType Sema::BuildQualifiedType(QualType T, SourceLocation Loc,
     SplitQualType Split = T.getSplitUnqualifiedType();
     T = BuildAtomicType(QualType(Split.Ty, 0),
                         DS ? DS->getAtomicSpecLoc() : Loc);
+    if (T.isNull())
+      return T;
+    Split.Quals.addCVRQualifiers(CVR);
+    return BuildQualifiedType(T, Loc, Split.Quals);
+  }
+  // The same as for _Atomic
+  if (CVRAU & DeclSpec::TQ_tmvar && !T->isTMVarType()) {
+    SplitQualType Split = T.getSplitUnqualifiedType();
+    T = BuildTMVarType(QualType(Split.Ty, 0),
+                        DS ? DS->getTMVarSpecLoc() : Loc);
     if (T.isNull())
       return T;
     Split.Quals.addCVRQualifiers(CVR);
@@ -7986,4 +8009,35 @@ QualType Sema::BuildAtomicType(QualType T, SourceLocation Loc) {
 
   // Build the pointer type.
   return Context.getAtomicType(T);
+}
+
+// Almost the same as for Sema::BuildAtomicType
+QualType Sema::BuildTMVarType(QualType T, SourceLocation Loc) {
+  if (!T->isDependentType()) {
+    // FIXME: It isn't entirely clear whether incomplete TMVar types
+    // are allowed or not; for simplicity, ban them for the moment.
+    if (RequireCompleteType(Loc, T, diag::err_tmvar_specifier_bad_type, 0))
+      return QualType();
+
+    int DisallowedKind = -1;
+    if (T->isFunctionType())
+      DisallowedKind = 1;
+    else if (T->isReferenceType())
+      DisallowedKind = 2;
+    else if (T->isAtomicType())
+      DisallowedKind = 3;
+    else if (T.hasQualifiers())
+      DisallowedKind = 4;
+    else if (!T.isTriviallyCopyableType(Context))
+      // Some other non-trivially-copyable type (probably a C++ class)
+      DisallowedKind = 5;
+
+    if (DisallowedKind != -1) {
+      Diag(Loc, diag::err_tmvar_specifier_bad_type) << DisallowedKind << T;
+      return QualType();
+    }
+  }
+
+  // Build the pointer type.
+  return Context.getTMVarType(T);
 }

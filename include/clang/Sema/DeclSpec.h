@@ -301,6 +301,7 @@ public:
   static const TST TST_auto_type = clang::TST_auto_type;
   static const TST TST_unknown_anytype = clang::TST_unknown_anytype;
   static const TST TST_atomic = clang::TST_atomic;
+  static const TST TST_tmvar = clang::TST_tmvar;
 #define GENERIC_IMAGE_TYPE(ImgType, Id) \
   static const TST TST_##ImgType##_t = clang::TST_##ImgType##_t;
 #include "clang/Basic/OpenCLImageTypes.def"
@@ -315,7 +316,10 @@ public:
     TQ_unaligned   = 8,
     // This has no corresponding Qualifiers::TQ value, because it's not treated
     // as a qualifier in our type system.
-    TQ_atomic      = 16
+    TQ_atomic      = 16,
+    // This also has no corresponding Qualifiers::TQ value, because i do not
+    // know the implications of it having or not having it yet!
+    TQ_tmvar       = 32
   };
 
   /// ParsedSpecifiers - Flags to query which specifiers were applied.  This is
@@ -346,7 +350,7 @@ private:
   unsigned TypeSpecPipe : 1;
 
   // type-qualifiers
-  unsigned TypeQualifiers : 5;  // Bitwise OR of TQ.
+  unsigned TypeQualifiers : 6;  // Bitwise OR of TQ.
 
   // function-specifier
   unsigned FS_inline_specified : 1;
@@ -387,7 +391,7 @@ private:
   SourceLocation TSTNameLoc;
   SourceRange TypeofParensRange;
   SourceLocation TQ_constLoc, TQ_restrictLoc, TQ_volatileLoc, TQ_atomicLoc,
-      TQ_unalignedLoc;
+      TQ_tmvarLoc, TQ_unalignedLoc;
   SourceLocation FS_inlineLoc, FS_virtualLoc, FS_explicitLoc, FS_noreturnLoc;
   SourceLocation FS_forceinlineLoc;
   SourceLocation FriendLoc, ModulePrivateLoc, ConstexprLoc;
@@ -541,6 +545,7 @@ public:
   SourceLocation getRestrictSpecLoc() const { return TQ_restrictLoc; }
   SourceLocation getVolatileSpecLoc() const { return TQ_volatileLoc; }
   SourceLocation getAtomicSpecLoc() const { return TQ_atomicLoc; }
+  SourceLocation getTMVarSpecLoc() const { return TQ_tmvarLoc; }
   SourceLocation getUnalignedSpecLoc() const { return TQ_unalignedLoc; }
   SourceLocation getPipeLoc() const { return TQ_pipeLoc; }
 
@@ -551,6 +556,7 @@ public:
     TQ_restrictLoc = SourceLocation();
     TQ_volatileLoc = SourceLocation();
     TQ_atomicLoc = SourceLocation();
+    TQ_tmvarLoc = SourceLocation();
     TQ_unalignedLoc = SourceLocation();
     TQ_pipeLoc = SourceLocation();
   }

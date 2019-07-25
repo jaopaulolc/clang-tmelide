@@ -3130,6 +3130,7 @@ void InitializationSequence::Step::Destroy() {
   case SK_QualificationConversionXValue:
   case SK_QualificationConversionLValue:
   case SK_AtomicConversion:
+  case SK_TMVarConversion:
   case SK_LValueToRValue:
   case SK_ListInitialization:
   case SK_UnwrapInitList:
@@ -3308,6 +3309,13 @@ void InitializationSequence::AddQualificationConversionStep(QualType Ty,
 void InitializationSequence::AddAtomicConversionStep(QualType Ty) {
   Step S;
   S.Kind = SK_AtomicConversion;
+  S.Type = Ty;
+  Steps.push_back(S);
+}
+
+void InitializationSequence::AddTMVarConversionStep(QualType Ty) {
+  Step S;
+  S.Kind = SK_TMVarConversion;
   S.Type = Ty;
   Steps.push_back(S);
 }
@@ -5510,11 +5518,25 @@ void InitializationSequence::InitializeFrom(Sema &S,
       }
     }
 
+    // For a conversion to __TMVar(T) from either T or a class type derived
+    // from T, initialize the T object then convert to __TMVar type.
+    bool NeedTMVarConversion = false;
+    if (const TMVarType *TMVar = DestType->getAs<TMVarType>()) {
+      if (Context.hasSameUnqualifiedType(SourceType, TMVar->getValueType()) ||
+          S.IsDerivedFrom(Initializer->getLocStart(), SourceType,
+                          TMVar->getValueType())) {
+        DestType = TMVar->getValueType();
+        NeedTMVarConversion = true;
+      }
+    }
+
     TryUserDefinedConversion(S, DestType, Kind, Initializer, *this,
                              TopLevelOfInitList);
     MaybeProduceObjCObject(S, *this, Entity);
     if (!Failed() && NeedAtomicConversion)
       AddAtomicConversionStep(Entity.getType());
+    if (!Failed() && NeedTMVarConversion)
+      AddTMVarConversionStep(Entity.getType());
     return;
   }
 
@@ -6700,6 +6722,7 @@ InitializationSequence::Perform(Sema &S,
   case SK_QualificationConversionXValue:
   case SK_QualificationConversionRValue:
   case SK_AtomicConversion:
+  case SK_TMVarConversion:
   case SK_LValueToRValue:
   case SK_ConversionSequence:
   case SK_ConversionSequenceNoNarrowing:
@@ -7002,6 +7025,13 @@ InitializationSequence::Perform(Sema &S,
       assert(CurInit.get()->isRValue() && "cannot convert glvalue to atomic");
       CurInit = S.ImpCastExprToType(CurInit.get(), Step->Type,
                                     CK_NonAtomicToAtomic, VK_RValue);
+      break;
+    }
+
+    case SK_TMVarConversion: {
+      assert(CurInit.get()->isRValue() && "cannot convert glvalue to atomic");
+      CurInit = S.ImpCastExprToType(CurInit.get(), Step->Type,
+                                    CK_NonTMVarToTMVar, VK_RValue);
       break;
     }
 
@@ -8173,6 +8203,10 @@ void InitializationSequence::dump(raw_ostream &OS) const {
 
     case SK_AtomicConversion:
       OS << "non-atomic-to-atomic conversion";
+      break;
+
+    case SK_TMVarConversion:
+      OS << "non-tmvar-to-tmvar conversion";
       break;
 
     case SK_LValueToRValue:

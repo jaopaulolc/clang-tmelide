@@ -1341,6 +1341,12 @@ QualType QualType::getAtomicUnqualifiedType() const {
   return getUnqualifiedType();
 }
 
+QualType QualType::getTMVarUnqualifiedType() const {
+  if (auto AT = getTypePtr()->getAs<TMVarType>())
+    return AT->getValueType().getUnqualifiedType();
+  return getUnqualifiedType();
+}
+
 Optional<ArrayRef<QualType>> Type::getObjCSubstitutions(
                                const DeclContext *dc) const {
   // Look through method scopes.
@@ -3480,6 +3486,8 @@ static CachedProperties computeCachedProperties(const Type *T) {
     return Cache::get(cast<ObjCObjectPointerType>(T)->getPointeeType());
   case Type::Atomic:
     return Cache::get(cast<AtomicType>(T)->getValueType());
+  case Type::TMVar:
+    return Cache::get(cast<TMVarType>(T)->getValueType());
   case Type::Pipe:
     return Cache::get(cast<PipeType>(T)->getElementType());
   }
@@ -3564,6 +3572,8 @@ LinkageInfo LinkageComputer::computeTypeLinkageInfo(const Type *T) {
         cast<ObjCObjectPointerType>(T)->getPointeeType());
   case Type::Atomic:
     return computeTypeLinkageInfo(cast<AtomicType>(T)->getValueType());
+  case Type::TMVar:
+    return computeTypeLinkageInfo(cast<TMVarType>(T)->getValueType());
   case Type::Pipe:
     return computeTypeLinkageInfo(cast<PipeType>(T)->getElementType());
   }
@@ -3716,6 +3726,7 @@ bool Type::canHaveNullability(bool ResultIfUnknown) const {
   case Type::ObjCObject:
   case Type::ObjCInterface:
   case Type::Atomic:
+  case Type::TMVar:
   case Type::Pipe:
     return false;
   }

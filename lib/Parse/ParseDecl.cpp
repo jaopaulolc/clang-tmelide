@@ -3714,6 +3714,18 @@ void Parser::ParseDeclarationSpecifiers(DeclSpec &DS,
                                  getLangOpts());
       break;
 
+    case tok::kw___TMVar:
+      //   If the __TMVar keyword is immediately followed by a left parenthesis,
+      //   it is interpreted as a type specifier (with a type name), not as a
+      //   type qualifier.
+      if (NextToken().is(tok::l_paren)) {
+        ParseTMVarSpecifier(DS);
+        continue;
+      }
+      isInvalid = DS.SetTypeQual(DeclSpec::TQ_tmvar, Loc, PrevSpec, DiagID,
+                                 getLangOpts());
+      break;
+
     // OpenCL qualifiers:
     case tok::kw___generic:
       // generic address space is introduced only in OpenCL v2.0
@@ -4700,6 +4712,9 @@ bool Parser::isTypeSpecifierQualifier() {
   // C11 _Atomic
   case tok::kw__Atomic:
     return true;
+  // Transactional Variable
+  case tok::kw___TMVar:
+    return true;
   }
 }
 
@@ -4839,6 +4854,10 @@ bool Parser::isDeclarationSpecifier(bool DisambiguatingWithExpression) {
 
     // C11 _Atomic
   case tok::kw__Atomic:
+    return true;
+
+  // Transactional Variable
+  case tok::kw___TMVar:
     return true;
 
     // GNU ObjC bizarre protocol extension: <proto1,proto2> with implicit 'id'.
@@ -5080,6 +5099,13 @@ void Parser::ParseTypeQualifierListOpt(
       if (!AtomicAllowed)
         goto DoneWithTypeQuals;
       isInvalid = DS.SetTypeQual(DeclSpec::TQ_atomic, Loc, PrevSpec, DiagID,
+                                 getLangOpts());
+      break;
+    case tok::kw___TMVar:
+      // FIXME: when to allow __TMVar?
+      if (!AtomicAllowed)
+        goto DoneWithTypeQuals;
+      isInvalid = DS.SetTypeQual(DeclSpec::TQ_tmvar, Loc, PrevSpec, DiagID,
                                  getLangOpts());
       break;
 
@@ -5382,6 +5408,9 @@ void Parser::ParseDeclaratorInternal(Declarator &D,
       if (DS.getTypeQualifiers() & DeclSpec::TQ_atomic)
         Diag(DS.getAtomicSpecLoc(),
              diag::err_invalid_reference_qualifier_application) << "_Atomic";
+      if (DS.getTypeQualifiers() & DeclSpec::TQ_tmvar)
+        Diag(DS.getTMVarSpecLoc(),
+             diag::err_invalid_reference_qualifier_application) << "__TMVar";
     }
 
     // Recursively parse the declarator.
@@ -6765,6 +6794,41 @@ void Parser::ParseAtomicSpecifier(DeclSpec &DS) {
   const char *PrevSpec = nullptr;
   unsigned DiagID;
   if (DS.SetTypeSpecType(DeclSpec::TST_atomic, StartLoc, PrevSpec,
+                         DiagID, Result.get(),
+                         Actions.getASTContext().getPrintingPolicy()))
+    Diag(StartLoc, DiagID) << PrevSpec;
+}
+
+/// [GNU-TM]   tmvar-specifier:
+///           __TMVar ( type-name )
+///
+void Parser::ParseTMVarSpecifier(DeclSpec &DS) {
+  assert(Tok.is(tok::kw___TMVar) && NextToken().is(tok::l_paren) &&
+         "Not an TMVar specifier");
+
+  SourceLocation StartLoc = ConsumeToken();
+  BalancedDelimiterTracker T(*this, tok::l_paren);
+  if (T.consumeOpen())
+    return;
+
+  TypeResult Result = ParseTypeName();
+  if (Result.isInvalid()) {
+    SkipUntil(tok::r_paren, StopAtSemi);
+    return;
+  }
+
+  // Match the ')'
+  T.consumeClose();
+
+  if (T.getCloseLocation().isInvalid())
+    return;
+
+  DS.setTypeofParensRange(T.getRange());
+  DS.SetRangeEnd(T.getCloseLocation());
+
+  const char *PrevSpec = nullptr;
+  unsigned DiagID;
+  if (DS.SetTypeSpecType(DeclSpec::TST_tmvar, StartLoc, PrevSpec,
                          DiagID, Result.get(),
                          Actions.getASTContext().getPrintingPolicy()))
     Diag(StartLoc, DiagID) << PrevSpec;

@@ -6299,6 +6299,15 @@ QualType ASTReader::readTypeRecord(unsigned Index) {
     return Context.getAtomicType(ValueType);
   }
 
+  case TYPE_TMVAR: {
+    if (Record.size() != 1) {
+      Error("Incorrect encoding of TMVar type");
+      return QualType();
+    }
+    QualType ValueType = readType(*Loc.F, Record, Idx);
+    return Context.getTMVarType(ValueType);
+  }
+
   case TYPE_PIPE: {
     if (Record.size() != 2) {
       Error("Incorrect encoding of pipe type");
@@ -6677,6 +6686,12 @@ void TypeLocReader::VisitObjCObjectPointerTypeLoc(ObjCObjectPointerTypeLoc TL) {
 }
 
 void TypeLocReader::VisitAtomicTypeLoc(AtomicTypeLoc TL) {
+  TL.setKWLoc(ReadSourceLocation());
+  TL.setLParenLoc(ReadSourceLocation());
+  TL.setRParenLoc(ReadSourceLocation());
+}
+
+void TypeLocReader::VisitTMVarTypeLoc(TMVarTypeLoc TL) {
   TL.setKWLoc(ReadSourceLocation());
   TL.setLParenLoc(ReadSourceLocation());
   TL.setRParenLoc(ReadSourceLocation());

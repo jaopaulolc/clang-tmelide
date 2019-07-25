@@ -1946,6 +1946,7 @@ bool CXXNameMangler::mangleUnresolvedTypeOrSimpleId(QualType Ty,
   case Type::ObjCObjectPointer:
   case Type::ObjCTypeParam:
   case Type::Atomic:
+  case Type::TMVar:
   case Type::Pipe:
     llvm_unreachable("type is illegal as a nested name specifier");
 
@@ -3275,6 +3276,13 @@ void CXXNameMangler::mangleType(const AtomicType *T) {
   // <type> ::= U <source-name> <type>  # vendor extended type qualifier
   // (Until there's a standardized mangling...)
   Out << "U7_Atomic";
+  mangleType(T->getValueType());
+}
+
+void CXXNameMangler::mangleType(const TMVarType *T) {
+  // <type> ::= U <source-name> <type>  # vendor extended type qualifier
+  // (Until there's a standardized mangling...)
+  Out << "U7_TMVar";
   mangleType(T->getValueType());
 }
 

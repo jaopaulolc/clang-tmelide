@@ -2422,6 +2422,11 @@ llvm::DIType *CGDebugInfo::CreateType(const AtomicType *Ty, llvm::DIFile *U) {
   return DBuilder.createQualifiedType(llvm::dwarf::DW_TAG_atomic_type, FromTy);
 }
 
+llvm::DIType *CGDebugInfo::CreateType(const TMVarType *Ty, llvm::DIFile *U) {
+  auto *FromTy = getOrCreateType(Ty->getValueType(), U);
+  return DBuilder.createQualifiedType(llvm::dwarf::DW_TAG_tmvar_type, FromTy);
+}
+
 llvm::DIType* CGDebugInfo::CreateType(const PipeType *Ty,
                                      llvm::DIFile *U) {
   return getOrCreateType(Ty->getElementType(), U);
@@ -2723,6 +2728,9 @@ llvm::DIType *CGDebugInfo::CreateTypeNode(QualType Ty, llvm::DIFile *Unit) {
 
   case Type::Atomic:
     return CreateType(cast<AtomicType>(Ty), Unit);
+
+  case Type::TMVar:
+    return CreateType(cast<TMVarType>(Ty), Unit);
 
   case Type::Pipe:
     return CreateType(cast<PipeType>(Ty), Unit);

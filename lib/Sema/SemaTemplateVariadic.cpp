@@ -800,6 +800,12 @@ bool Sema::containsUnexpandedParameterPacks(Declarator &D) {
       return true;
     break;
   }
+  case TST_tmvar: {
+    QualType T = DS.getRepAsType().get();
+    if (!T.isNull() && T->containsUnexpandedParameterPack())
+      return true;
+    break;
+  }
       
   case TST_typeofExpr:
   case TST_decltype:

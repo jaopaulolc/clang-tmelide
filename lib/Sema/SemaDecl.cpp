@@ -4384,6 +4384,8 @@ Sema::ParsedFreeStandingDeclSpec(Scope *S, AccessSpecifier AS, DeclSpec &DS,
     // Restrict is covered above.
     if (DS.getTypeQualifiers() & DeclSpec::TQ_atomic)
       Diag(DS.getAtomicSpecLoc(), DiagID) << "_Atomic";
+    if (DS.getTypeQualifiers() & DeclSpec::TQ_tmvar)
+      Diag(DS.getAtomicSpecLoc(), DiagID) << "__TMVar";
     if (DS.getTypeQualifiers() & DeclSpec::TQ_unaligned)
       Diag(DS.getUnalignedSpecLoc(), DiagID) << "__unaligned";
   }
@@ -4642,6 +4644,11 @@ Decl *Sema::BuildAnonymousStructOrUnion(Scope *S, DeclSpec &DS,
         Diag(DS.getAtomicSpecLoc(),
              diag::ext_anonymous_struct_union_qualified)
           << Record->isUnion() << "_Atomic"
+          << FixItHint::CreateRemoval(DS.getAtomicSpecLoc());
+      if (DS.getTypeQualifiers() & DeclSpec::TQ_tmvar)
+        Diag(DS.getTMVarSpecLoc(),
+             diag::ext_anonymous_struct_union_qualified)
+          << Record->isUnion() << "__TMVar"
           << FixItHint::CreateRemoval(DS.getAtomicSpecLoc());
       if (DS.getTypeQualifiers() & DeclSpec::TQ_unaligned)
         Diag(DS.getUnalignedSpecLoc(),

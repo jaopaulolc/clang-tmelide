@@ -2884,6 +2884,7 @@ void ItaniumRTTIBuilder::BuildVTablePointer(const Type *Ty) {
   case Type::ExtVector:
   case Type::Complex:
   case Type::Atomic:
+  case Type::TMVar:
   // FIXME: GCC treats block pointers as fundamental types?!
   case Type::BlockPointer:
     // abi::__fundamental_type_info.
@@ -3162,6 +3163,7 @@ llvm::Constant *ItaniumRTTIBuilder::BuildTypeInfo(QualType Ty, bool Force,
     break;
 
   case Type::Atomic:
+  case Type::TMVar:
     // No fields, at least for the moment.
     break;
   }

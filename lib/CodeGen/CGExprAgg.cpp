@@ -684,6 +684,55 @@ void AggExprEmitter::VisitCastExpr(CastExpr *E) {
     return EmitFinalDestCopy(valueType, rvalue);
   }
 
+  case CK_NonTMVarToTMVar:
+  case CK_TMVarToNonTMVar: {
+    bool isToTMVar = (E->getCastKind() == CK_NonTMVarToTMVar);
+
+    // Determine the tmvar and value types.
+    QualType tmvarType = E->getSubExpr()->getType();
+    QualType valueType = E->getType();
+    if (isToTMVar) std::swap(tmvarType, valueType);
+
+    assert(tmvarType->isTMVarType());
+    assert(CGF.getContext().hasSameUnqualifiedType(valueType,
+                          tmvarType->castAs<TMVarType>()->getValueType()));
+
+    // Just recurse normally if we're ignoring the result.
+    if (Dest.isIgnored()) {
+      return Visit(E->getSubExpr());
+    }
+
+    CastKind peepholeTarget =
+      (isToTMVar ? CK_TMVarToNonTMVar : CK_NonTMVarToTMVar);
+
+    // These two cases are reverses of each other; try to peephole them.
+    if (Expr *op = findPeephole(E->getSubExpr(), peepholeTarget)) {
+      assert(CGF.getContext().hasSameUnqualifiedType(op->getType(),
+                                                     E->getType()) &&
+           "peephole significantly changed types?");
+      return Visit(op);
+    }
+
+    // If we're converting an r-value of non-tmvar type to an r-value
+    // of tmvar type, just emit directly into the relevant sub-object.
+    if (isToTMVar) {
+      AggValueSlot valueDest = Dest;
+      CGF.EmitAggExpr(E->getSubExpr(), valueDest);
+      return;
+    }
+
+    // Otherwise, we're converting an tmvar type to a non-tmvar type.
+    // Make an tmvar temporary, emit into that, and then copy the value out.
+    AggValueSlot tmvarSlot =
+      CGF.CreateAggTemp(tmvarType, "tmvar-to-nontmvar.temp");
+    CGF.EmitAggExpr(E->getSubExpr(), tmvarSlot);
+
+    Address valueAddr =
+      Builder.CreateStructGEP(tmvarSlot.getAddress(), 0, CharUnits());
+    RValue rvalue = RValue::getAggregate(valueAddr, tmvarSlot.isVolatile());
+    return EmitFinalDestCopy(valueType, rvalue);
+  }
+
   case CK_LValueToRValue:
     // If we're loading from a volatile type, force the destination
     // into existence.

@@ -1428,6 +1428,7 @@ public:
                                  SourceLocation Loc, DeclarationName Entity);
   QualType BuildParenType(QualType T);
   QualType BuildAtomicType(QualType T, SourceLocation Loc);
+  QualType BuildTMVarType(QualType T, SourceLocation Loc);
   QualType BuildReadPipeType(QualType T,
                          SourceLocation Loc);
   QualType BuildWritePipeType(QualType T,

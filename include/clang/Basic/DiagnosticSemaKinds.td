@@ -5512,6 +5512,11 @@ def err_atomic_specifier_bad_type : Error<
   "%select{incomplete |array |function |reference |atomic |qualified |}0type "
   "%1 %select{||||||which is not trivially copyable}0">;
 
+def err_tmvar_specifier_bad_type : Error<
+  "__TMVar cannot be applied to "
+  "%select{incomplete |function |reference |atomic |qualified |}0type "
+  "%1 %select{|||||which is not trivially copyable}0">;
+
 // Expressions.
 def ext_sizeof_alignof_function_type : Extension<
   "invalid application of '%select{sizeof|alignof|vec_step}0' to a "

@@ -307,6 +307,11 @@ CAST_OPERATION(AtomicToNonAtomic)
 /// \brief Converts from T to _Atomic(T).
 CAST_OPERATION(NonAtomicToAtomic)
 
+/// \brief Converts from __TMVar(T) to T.
+CAST_OPERATION(TMVarToNonTMVar)
+/// \brief Converts from T to __TMVar(T).
+CAST_OPERATION(NonTMVarToTMVar)
+
 /// \brief Causes a block literal to by copied to the heap and then 
 /// autoreleased.
 ///

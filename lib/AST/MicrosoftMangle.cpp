@@ -2587,6 +2587,15 @@ void MicrosoftCXXNameMangler::mangleType(const AtomicType *T, Qualifiers,
   mangleArtificalTagType(TTK_Struct, TemplateMangling, {"__clang"});
 }
 
+void MicrosoftCXXNameMangler::mangleType(const TMVarType *T, Qualifiers,
+                                         SourceRange Range) {
+  DiagnosticsEngine &Diags = Context.getDiags();
+  unsigned DiagID = Diags.getCustomDiagID(DiagnosticsEngine::Error,
+    "cannot mangle this TMVar type yet");
+  Diags.Report(Range.getBegin(), DiagID)
+    << Range;
+}
+
 void MicrosoftCXXNameMangler::mangleType(const PipeType *T, Qualifiers,
                                          SourceRange Range) {
   DiagnosticsEngine &Diags = Context.getDiags();

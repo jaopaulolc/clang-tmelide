@@ -309,6 +309,7 @@ KEYWORD(__func__                    , KEYALL)
 KEYWORD(__objc_yes                  , KEYALL)
 KEYWORD(__objc_no                   , KEYALL)
 KEYWORD(__transaction_atomic        , KEYGNU)
+KEYWORD(__TMVar                     , KEYGNU)
 
 
 // C++ 2.11p1: Keywords.

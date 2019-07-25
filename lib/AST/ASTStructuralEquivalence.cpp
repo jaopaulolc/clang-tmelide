@@ -720,6 +720,13 @@ static bool IsStructurallyEquivalent(StructuralEquivalenceContext &Context,
     break;
   }
 
+  case Type::TMVar: {
+    if (!IsStructurallyEquivalent(Context, cast<TMVarType>(T1)->getValueType(),
+                                  cast<TMVarType>(T2)->getValueType()))
+      return false;
+    break;
+  }
+
   case Type::Pipe: {
     if (!IsStructurallyEquivalent(Context, cast<PipeType>(T1)->getElementType(),
                                   cast<PipeType>(T2)->getElementType()))

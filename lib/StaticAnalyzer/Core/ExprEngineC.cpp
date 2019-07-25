@@ -334,6 +334,8 @@ void ExprEngine::VisitCast(const CastExpr *CastE, const Expr *Ex,
         // value through atomic and nonatomic pointers.
       case CK_AtomicToNonAtomic:
       case CK_NonAtomicToAtomic:
+      case CK_TMVarToNonTMVar:
+      case CK_NonTMVarToTMVar:
         // True no-ops.
       case CK_NoOp:
       case CK_ConstructorConversion:

@@ -181,6 +181,8 @@ DeclaratorChunk DeclaratorChunk::getFunction(bool hasProto,
                                              TypeResult TrailingReturnType) {
   assert(!(TypeQuals & DeclSpec::TQ_atomic) &&
          "function cannot have _Atomic qualifier");
+  assert(!(TypeQuals & DeclSpec::TQ_tmvar) &&
+         "function cannot have __TMVar qualifier");
 
   DeclaratorChunk I;
   I.Kind                        = Function;
@@ -325,6 +327,7 @@ bool Declarator::isDeclarationOfFunction() const {
   
   switch (DS.getTypeSpecType()) {
     case TST_atomic:
+    case TST_tmvar:
     case TST_auto:
     case TST_auto_type:
     case TST_bool:
@@ -527,6 +530,7 @@ const char *DeclSpec::getSpecifierName(DeclSpec::TST T,
   case DeclSpec::TST_underlyingType: return "__underlying_type";
   case DeclSpec::TST_unknown_anytype: return "__unknown_anytype";
   case DeclSpec::TST_atomic: return "_Atomic";
+  case DeclSpec::TST_tmvar: return "__TMVar";
 #define GENERIC_IMAGE_TYPE(ImgType, Id) \
   case DeclSpec::TST_##ImgType##_t: \
     return #ImgType "_t";
@@ -543,6 +547,7 @@ const char *DeclSpec::getSpecifierName(TQ T) {
   case DeclSpec::TQ_restrict:    return "restrict";
   case DeclSpec::TQ_volatile:    return "volatile";
   case DeclSpec::TQ_atomic:      return "_Atomic";
+  case DeclSpec::TQ_tmvar:       return "__TMVar";
   case DeclSpec::TQ_unaligned:   return "__unaligned";
   }
   llvm_unreachable("Unknown typespec!");
@@ -849,6 +854,7 @@ bool DeclSpec::SetTypeQual(TQ T, SourceLocation Loc, const char *&PrevSpec,
   case TQ_volatile: TQ_volatileLoc = Loc; return false;
   case TQ_unaligned: TQ_unalignedLoc = Loc; return false;
   case TQ_atomic:   TQ_atomicLoc = Loc; return false;
+  case TQ_tmvar:    TQ_tmvarLoc = Loc; return false;
   }
 
   llvm_unreachable("Unknown type qualifier!");
@@ -1002,11 +1008,11 @@ void DeclSpec::Finish(Sema &S, const PrintingPolicy &Policy) {
        TypeSpecSign != TSS_unspecified ||
        TypeAltiVecVector || TypeAltiVecPixel || TypeAltiVecBool ||
        TypeQualifiers)) {
-    const unsigned NumLocs = 9;
+    const unsigned NumLocs = 10;
     SourceLocation ExtraLocs[NumLocs] = {
         TSWRange.getBegin(), TSCLoc,       TSSLoc,
         AltiVecLoc,          TQ_constLoc,  TQ_restrictLoc,
-        TQ_volatileLoc,      TQ_atomicLoc, TQ_unalignedLoc};
+        TQ_volatileLoc,      TQ_atomicLoc, TQ_unalignedLoc, TQ_tmvarLoc};
     FixItHint Hints[NumLocs];
     SourceLocation FirstLoc;
     for (unsigned I = 0; I != NumLocs; ++I) {

@@ -406,6 +406,11 @@ TypeLoc TypeLoc::findExplicitQualifierLoc() const {
     return atomic;
   }
 
+  // Transactional Variable
+  if (auto tmvarLoc = loc.getAs<TMVarTypeLoc>()) {
+    return tmvarLoc;
+  }
+
   return {};
 }
 

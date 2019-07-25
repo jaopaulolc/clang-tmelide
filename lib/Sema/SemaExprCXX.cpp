@@ -3697,6 +3697,14 @@ Sema::PerformImplicitConversion(Expr *From, QualType ToType,
     ToType = ToAtomic->getValueType();
   }
 
+  // If we're converting to an tmvar type, first convert to the corresponding
+  // non-tmvar type.
+  QualType ToTMVarType;
+  if (const TMVarType *ToTMVar = ToType->getAs<TMVarType>()) {
+    ToTMVarType = ToType;
+    ToType = ToTMVar->getValueType();
+  }
+
   QualType InitialFromType = FromType;
   // Perform the first implicit conversion.
   switch (SCS.First) {
@@ -3704,6 +3712,11 @@ Sema::PerformImplicitConversion(Expr *From, QualType ToType,
     if (const AtomicType *FromAtomic = FromType->getAs<AtomicType>()) {
       FromType = FromAtomic->getValueType().getUnqualifiedType();
       From = ImplicitCastExpr::Create(Context, FromType, CK_AtomicToNonAtomic,
+                                      From, /*BasePath=*/nullptr, VK_RValue);
+    }
+    if (const TMVarType *FromTMVar = FromType->getAs<TMVarType>()) {
+      FromType = FromTMVar->getValueType().getUnqualifiedType();
+      From = ImplicitCastExpr::Create(Context, FromType, CK_TMVarToNonTMVar,
                                       From, /*BasePath=*/nullptr, VK_RValue);
     }
     break;
@@ -4065,6 +4078,15 @@ Sema::PerformImplicitConversion(Expr *From, QualType ToType,
     assert(Context.hasSameType(
         ToAtomicType->castAs<AtomicType>()->getValueType(), From->getType()));
     From = ImpCastExprToType(From, ToAtomicType, CK_NonAtomicToAtomic,
+                             VK_RValue, nullptr, CCK).get();
+  }
+
+  // If this conversion sequence involved a scalar -> atomic conversion, perform
+  // that conversion now.
+  if (!ToTMVarType.isNull()) {
+    assert(Context.hasSameType(
+        ToTMVarType->castAs<TMVarType>()->getValueType(), From->getType()));
+    From = ImpCastExprToType(From, ToTMVarType, CK_NonTMVarToTMVar,
                              VK_RValue, nullptr, CCK).get();
   }
 

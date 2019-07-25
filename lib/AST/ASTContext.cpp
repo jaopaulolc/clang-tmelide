@@ -1966,6 +1966,14 @@ TypeInfo ASTContext::getTypeInfoImpl(const Type *T) const {
   }
   break;
 
+  case Type::TMVar: { // FIXME: Is this ok?
+    // Start with the base type information.
+    TypeInfo Info = getTypeInfo(cast<TMVarType>(T)->getValueType());
+    Width = Info.Width;
+    Align = Info.Align;
+  }
+  break;
+
   case Type::Pipe:
     Width = Target->getPointerWidth(getTargetAddressSpace(LangAS::opencl_global));
     Align = Target->getPointerAlign(getTargetAddressSpace(LangAS::opencl_global));
@@ -3024,6 +3032,12 @@ QualType ASTContext::getVariableArrayDecayedType(QualType type) const {
   case Type::Atomic: {
     const AtomicType *at = cast<AtomicType>(ty);
     result = getAtomicType(getVariableArrayDecayedType(at->getValueType()));
+    break;
+  }
+
+  case Type::TMVar: {
+    const TMVarType *tmvt = cast<TMVarType>(ty);
+    result = getTMVarType(getVariableArrayDecayedType(tmvt->getValueType()));
     break;
   }
 
@@ -4742,6 +4756,33 @@ QualType ASTContext::getAtomicType(QualType T) const {
   return QualType(New, 0);
 }
 
+/// getTMVarType - Same as for getAtomicType
+QualType ASTContext::getTMVarType(QualType T) const {
+  // Unique pointers, to guarantee there is only one pointer of a particular
+  // structure.
+  llvm::FoldingSetNodeID ID;
+  TMVarType::Profile(ID, T);
+
+  void *InsertPos = nullptr;
+  if (TMVarType *TMVT = TMVarTypes.FindNodeOrInsertPos(ID, InsertPos))
+    return QualType(TMVT, 0);
+
+  // If the atomic value type isn't canonical, this won't be a canonical type
+  // either, so fill in the canonical type field.
+  QualType Canonical;
+  if (!T.isCanonical()) {
+    Canonical = getTMVarType(getCanonicalType(T));
+
+    // Get the new insert position for the node we care about.
+    TMVarType *NewIP = TMVarTypes.FindNodeOrInsertPos(ID, InsertPos);
+    assert(!NewIP && "Shouldn't be in the map!"); (void)NewIP;
+  }
+  TMVarType *New = new (*this, TypeAlignment) TMVarType(T, Canonical);
+  Types.push_back(New);
+  TMVarTypes.InsertNode(New, InsertPos);
+  return QualType(New, 0);
+}
+
 /// getAutoDeductType - Get type pattern for deducing against 'auto'.
 QualType ASTContext::getAutoDeductType() const {
   if (AutoDeductTy.isNull())
@@ -6352,6 +6393,13 @@ void ASTContext::getObjCEncodingForTypeImpl(QualType T, std::string& S,
     const AtomicType *AT = T->castAs<AtomicType>();
     S += 'A';
     getObjCEncodingForTypeImpl(AT->getValueType(), S, false, false, nullptr);
+    return;
+  }
+
+  case Type::TMVar: {
+    const TMVarType *TMVT = T->castAs<TMVarType>();
+    S += "__TMVar";
+    getObjCEncodingForTypeImpl(TMVT->getValueType(), S, false, false, nullptr);
     return;
   }
 
@@ -8556,6 +8604,24 @@ QualType ASTContext::mergeTypes(QualType LHS, QualType RHS,
     if (getCanonicalType(RHSValue) == getCanonicalType(ResultType))
       return RHS;
     return getAtomicType(ResultType);
+  }
+  case Type::TMVar: // The same as for Type::Atomic
+  {
+    // Merge two pointer types, while trying to preserve typedef info
+    QualType LHSValue = LHS->getAs<TMVarType>()->getValueType();
+    QualType RHSValue = RHS->getAs<TMVarType>()->getValueType();
+    if (Unqualified) {
+      LHSValue = LHSValue.getUnqualifiedType();
+      RHSValue = RHSValue.getUnqualifiedType();
+    }
+    QualType ResultType = mergeTypes(LHSValue, RHSValue, false,
+                                     Unqualified);
+    if (ResultType.isNull()) return QualType();
+    if (getCanonicalType(LHSValue) == getCanonicalType(ResultType))
+      return LHS;
+    if (getCanonicalType(RHSValue) == getCanonicalType(ResultType))
+      return RHS;
+    return getTMVarType(ResultType);
   }
   case Type::ConstantArray:
   {

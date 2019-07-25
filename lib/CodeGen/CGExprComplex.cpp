@@ -451,6 +451,8 @@ ComplexPairTy ComplexExprEmitter::EmitCast(CastKind CK, Expr *Op,
   // for some types.
   case CK_AtomicToNonAtomic:
   case CK_NonAtomicToAtomic:
+  case CK_TMVarToNonTMVar:
+  case CK_NonTMVarToTMVar:
   case CK_NoOp:
   case CK_LValueToRValue:
   case CK_UserDefinedConversion:

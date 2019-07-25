@@ -5308,6 +5308,10 @@ bool UnnamedLocalNoLinkageFinder::VisitAtomicType(const AtomicType* T) {
   return Visit(T->getValueType());
 }
 
+bool UnnamedLocalNoLinkageFinder::VisitTMVarType(const TMVarType* T) {
+  return Visit(T->getValueType());
+}
+
 bool UnnamedLocalNoLinkageFinder::VisitPipeType(const PipeType* T) {
   return false;
 }

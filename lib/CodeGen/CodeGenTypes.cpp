@@ -644,6 +644,11 @@ llvm::Type *CodeGenTypes::ConvertType(QualType T) {
     }
     break;
   }
+  case Type::TMVar: {
+    QualType valueType = cast<TMVarType>(Ty)->getValueType();
+    ResultType = ConvertTypeForMem(valueType);
+    break;
+  }
   case Type::Pipe: {
     ResultType = CGM.getOpenCLRuntime().getPipeType(cast<PipeType>(Ty));
     break;

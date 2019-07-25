@@ -4146,6 +4146,8 @@ static void AddTypeQualifierResults(DeclSpec &DS, ResultBuilder &Results,
     Results.AddResult("restrict");
   if (LangOpts.C11 && !(DS.getTypeQualifiers() & DeclSpec::TQ_atomic))
     Results.AddResult("_Atomic");
+  if (!(DS.getTypeQualifiers() & DeclSpec::TQ_tmvar))
+    Results.AddResult("__TMVar");
   if (LangOpts.MSVCCompat && !(DS.getTypeQualifiers() & DeclSpec::TQ_unaligned))
     Results.AddResult("__unaligned");
 }

@@ -735,6 +735,8 @@ public:
     case CK_LValueToRValue:
     case CK_AtomicToNonAtomic:
     case CK_NonAtomicToAtomic:
+    case CK_TMVarToNonTMVar:
+    case CK_NonTMVarToTMVar:
     case CK_NoOp:
     case CK_ConstructorConversion:
       return Visit(subExpr, destType);

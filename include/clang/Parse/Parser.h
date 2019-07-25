@@ -2404,6 +2404,7 @@ private:
                                          SourceLocation EndLoc);
   void ParseUnderlyingTypeSpecifier(DeclSpec &DS);
   void ParseAtomicSpecifier(DeclSpec &DS);
+  void ParseTMVarSpecifier(DeclSpec &DS);
 
   ExprResult ParseAlignArgument(SourceLocation Start,
                                 SourceLocation &EllipsisLoc);

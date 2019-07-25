@@ -619,7 +619,13 @@ ExprResult Sema::DefaultLvalueConversion(Expr *E) {
     Res = ImplicitCastExpr::Create(Context, T, CK_AtomicToNonAtomic, Res.get(),
                                    nullptr, VK_RValue);
   }
-  
+
+  if (const TMVarType *TMVar = T->getAs<TMVarType>()) {
+    T = TMVar->getValueType().getUnqualifiedType();
+    Res = ImplicitCastExpr::Create(Context, T, CK_TMVarToNonTMVar, Res.get(),
+                                   nullptr, VK_RValue);
+  }
+
   return Res;
 }
 
@@ -1238,6 +1244,10 @@ QualType Sema::UsualArithmeticConversions(ExprResult &LHS, ExprResult &RHS,
   // For conversion purposes, we ignore any atomic qualifier on the LHS.
   if (const AtomicType *AtomicLHS = LHSType->getAs<AtomicType>())
     LHSType = AtomicLHS->getValueType();
+
+  // For conversion purposes, we ignore any tmvar qualifier on the LHS.
+  if (const TMVarType *TMVarLHS = LHSType->getAs<TMVarType>())
+    LHSType = TMVarLHS->getValueType();
 
   // If both types are identical, no conversion is needed.
   if (LHSType == RHSType)
@@ -3905,6 +3915,9 @@ static void captureVariablyModifiedType(ASTContext &Context, QualType T,
       break;
     case Type::Atomic:
       T = cast<AtomicType>(Ty)->getValueType();
+      break;
+    case Type::TMVar:
+      T = cast<TMVarType>(Ty)->getValueType();
       break;
     }
   } while (!T.isNull() && T->isVariablyModifiedType());
@@ -7569,6 +7582,19 @@ Sema::CheckAssignmentConstraints(QualType LHSType, ExprResult &RHS,
     if (Kind != CK_NoOp && ConvertRHS)
       RHS = ImpCastExprToType(RHS.get(), AtomicTy->getValueType(), Kind);
     Kind = CK_NonAtomicToAtomic;
+    return Compatible;
+  }
+
+  // If we have an tmvar type, try a non-tmvar assignment, then just add an
+  // tmvar qualification step.
+  if (const TMVarType *TMVarTy = dyn_cast<TMVarType>(LHSType)) {
+    Sema::AssignConvertType result =
+      CheckAssignmentConstraints(TMVarTy->getValueType(), RHS, Kind);
+    if (result != Compatible)
+      return result;
+    if (Kind != CK_NoOp && ConvertRHS)
+      RHS = ImpCastExprToType(RHS.get(), TMVarTy->getValueType(), Kind);
+    Kind = CK_NonTMVarToTMVar;
     return Compatible;
   }
 

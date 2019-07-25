@@ -4063,6 +4063,8 @@ LValue CodeGenFunction::EmitCastLValue(const CastExpr *E) {
   // These are never l-values; just use the aggregate emission code.
   case CK_NonAtomicToAtomic:
   case CK_AtomicToNonAtomic:
+  case CK_TMVarToNonTMVar:
+  case CK_NonTMVarToTMVar:
     return EmitAggExprToLValue(E);
 
   case CK_Dynamic: {

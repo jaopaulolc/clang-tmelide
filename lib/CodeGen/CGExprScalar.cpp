@@ -1639,6 +1639,8 @@ Value *ScalarExprEmitter::VisitCastExpr(CastExpr *CE) {
   }
   case CK_AtomicToNonAtomic:
   case CK_NonAtomicToAtomic:
+  case CK_TMVarToNonTMVar:
+  case CK_NonTMVarToTMVar:
   case CK_NoOp:
   case CK_UserDefinedConversion:
     return Visit(const_cast<Expr*>(E));

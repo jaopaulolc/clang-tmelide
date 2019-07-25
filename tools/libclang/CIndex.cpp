@@ -1752,6 +1752,10 @@ bool CursorVisitor::VisitAtomicTypeLoc(AtomicTypeLoc TL) {
   return Visit(TL.getValueLoc());
 }
 
+bool CursorVisitor::VisitTMVarTypeLoc(TMVarTypeLoc TL) {
+  return Visit(TL.getValueLoc());
+}
+
 bool CursorVisitor::VisitPipeTypeLoc(PipeTypeLoc TL) {
   return Visit(TL.getValueLoc());
 }
