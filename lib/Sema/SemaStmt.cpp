@@ -579,8 +579,9 @@ Sema::BuildTransactionAtomicJmpBufDeclStmt(SourceLocation TxAtomicLoc) {
   Sema& SemaRef = *this;
   ASTContext& Context = SemaRef.getASTContext();
 
-  QualType jmpbufQualType = Context.getjmp_bufType();
+  QualType jmpbufQualType = Context.getlibitm_jmpbufType();
   if (jmpbufQualType.isNull()) {
+    llvm::errs() << "error: undefined libitm_jmpbuf!\n";
     return StmtError();
   }
 
@@ -628,19 +629,19 @@ Sema::BuildTransactionAtomicSetJmpDeclStmt(SourceLocation TxAtomicLoc,
   FunctionProtoType::ExtProtoInfo nonVariadicProtoInfo;
   nonVariadicProtoInfo.Variadic = false;
 
-  QualType jmpbufArrayDecayType =
-    Context.getArrayDecayedType(jmpbufVarDecl->getType());
+  QualType jmpbufPointerType =
+    Context.getPointerType(jmpbufVarDecl->getType());
 
   SmallVector<QualType, 1> ArgTypes;
-  ArgTypes.push_back(jmpbufArrayDecayType);
+  ArgTypes.push_back(jmpbufPointerType);
 
   SmallVector<Expr*, 1> Args;
   Expr *jmpbufDeclRef = new (Context) DeclRefExpr(jmpbufVarDecl, false,
       jmpbufVarDecl->getType(), VK_LValue, TxAtomicLoc);
-  ImplicitCastExpr* jmpbufICE = ImplicitCastExpr::Create(Context,
-      jmpbufVarDecl->getType(), CK_ArrayToPointerDecay, jmpbufDeclRef, nullptr,
-      VK_RValue);
-  Args.push_back(jmpbufICE);
+  UnaryOperator* jmpbufUO = new (Context) UnaryOperator(jmpbufDeclRef,
+      UnaryOperatorKind::UO_AddrOf, jmpbufPointerType, VK_RValue,
+      ExprObjectKind::OK_Ordinary, TxAtomicLoc);
+  Args.push_back(jmpbufUO);
 
   AttrVec Attrs;
   Attrs.push_back(ReturnsTwiceAttr::CreateImplicit(Context));
@@ -649,7 +650,7 @@ Sema::BuildTransactionAtomicSetJmpDeclStmt(SourceLocation TxAtomicLoc,
   QualType setjmpQualType =
     Context.getFunctionType(Context.IntTy, ArgTypes, nonVariadicProtoInfo);
   ExprResult R = BuildCallExpr(Context, SemaRef, TxAtomicLoc,
-      "setjmp", setjmpQualType, Args, Attrs);
+      "libitm_setjmp", setjmpQualType, Args, Attrs);
   if (R.isInvalid()) {
     llvm::errs() << "fatal error: failed to build setjmp CallExpr\n";
     return StmtError();

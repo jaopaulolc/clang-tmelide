@@ -343,6 +343,9 @@ class ASTContext : public RefCountedBase<ASTContext> {
   /// \brief The type for the C ucontext_t type.
   TypeDecl *ucontext_tDecl = nullptr;
 
+  /// \brief The type for libitm_jmpbuf type.
+  TypeDecl *libitm_jmpbufDecl = nullptr;
+
   /// \brief Type for the Block descriptor for Blocks CodeGen.
   ///
   /// Since this is only used for generation of debug info, it is not
@@ -1734,6 +1737,18 @@ public:
   QualType getucontext_tType() const {
     if (ucontext_tDecl)
       return getTypeDeclType(ucontext_tDecl);
+    return QualType();
+  }
+
+  /// \brief Set the type for libitm_jmpbuf type.
+  void setlibitm_jmpbufDecl(TypeDecl *libitm_jmpbufDecl) {
+    this->libitm_jmpbufDecl = libitm_jmpbufDecl;
+  }
+
+  /// \brief Retrieve the libitm_jmpbuf type.
+  QualType getlibitm_jmpbufType() const {
+    if (libitm_jmpbufDecl)
+      return getTypeDeclType(libitm_jmpbufDecl);
     return QualType();
   }
 
