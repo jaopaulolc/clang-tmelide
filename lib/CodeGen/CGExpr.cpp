@@ -1584,6 +1584,12 @@ llvm::Value *CodeGenFunction::EmitLoadOfScalar(Address Addr, bool Volatile,
     Load->setMetadata(CGM.getModule().getMDKindID("nontemporal"), Node);
   }
 
+  if (Ty->isTMVarType()) {
+    llvm::MDNode *Node = llvm::MDNode::get(
+        Load->getContext(), llvm::ConstantAsMetadata::get(Builder.getInt32(1)));
+    Load->setMetadata(CGM.getModule().getMDKindID("tmlocalvar"), Node);
+  }
+
   CGM.DecorateInstructionWithTBAA(Load, TBAAInfo);
 
   if (EmitScalarRangeCheck(Load, Ty, Loc)) {
@@ -1664,6 +1670,12 @@ void CodeGenFunction::EmitStoreOfScalar(llvm::Value *Value, Address Addr,
         llvm::MDNode::get(Store->getContext(),
                           llvm::ConstantAsMetadata::get(Builder.getInt32(1)));
     Store->setMetadata(CGM.getModule().getMDKindID("nontemporal"), Node);
+  }
+
+  if (Ty->isTMVarType()) {
+    llvm::MDNode *Node = llvm::MDNode::get(
+        Store->getContext(), llvm::ConstantAsMetadata::get(Builder.getInt32(1)));
+    Store->setMetadata(CGM.getModule().getMDKindID("tmlocalvar"), Node);
   }
 
   CGM.DecorateInstructionWithTBAA(Store, TBAAInfo);
