@@ -161,6 +161,10 @@ isSafeToConvert(QualType T, CodeGenTypes &CGT,
   if (const auto *AT = T->getAs<AtomicType>())
     T = AT->getValueType();
 
+  // Strip off tmvar type sugar.
+  if (const auto *TVT = T->getAs<TMVarType>())
+    T = TVT->getValueType();
+
   // If this is a record, check it.
   if (const auto *RT = T->getAs<RecordType>())
     return isSafeToConvert(RT->getDecl(), CGT, AlreadyChecked);
